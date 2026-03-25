@@ -406,7 +406,11 @@
 <body>
   <div class="container">
     <h1>לאן הולך הכסף שלך?</h1>
-    <p class="subtitle">גלה כמה מהמיסים שלך הולכים לכל סעיף בתקציב המדינה — <strong id="subtitleYear">טוען...</strong></p>
+    <p class="subtitle">
+      גלה כמה מהמיסים שלך הולכים לכל סעיף בתקציב המדינה —
+      <select id="yearSelect" style="background:#1e293b;color:#93c5fd;border:1px solid #475569;border-radius:6px;padding:0.2rem 0.5rem;font-size:1rem;font-weight:700;cursor:pointer;">
+      </select>
+    </p>
 
     <!-- Inputs -->
     <div class="input-section">
@@ -904,8 +908,9 @@
         };
       });
 
-      // Update subtitle with year
-      document.getElementById('subtitleYear').textContent = `שנת ${budgetYear}`;
+      // Update year selector to reflect loaded year
+      const sel = document.getElementById('yearSelect');
+      if (sel.value !== String(budgetYear)) sel.value = String(budgetYear);
 
       // Update source info in the page
       const sourceTextEl = document.getElementById('sourceText');
@@ -924,9 +929,7 @@
       }
     }
 
-    async function initBudgetData() {
-      const year = new Date().getFullYear() - 1;
-
+    async function loadBudgetForYear(year) {
       // 1. Check localStorage cache
       const cached = loadFromCache(year);
       if (cached) {
@@ -935,23 +938,35 @@
         return;
       }
 
-      // 2. Try loading pre-fetched JSON (created by GitHub Actions, no CORS issue)
+      // 2. Try loading pre-fetched JSON (created by GitHub Actions)
       try {
-        const jsonResp = await fetch('budget-data.json');
+        const jsonResp = await fetch(`budget-data-${year}.json`);
         if (jsonResp.ok) {
           const data = await jsonResp.json();
-          if (data && data.items && data.items.length > 0 && data.totalNIS >= MIN_VALID_BUDGET_NIS) {
-            console.log(`[budget] Loaded pre-fetched data: ${data.totalB}B NIS, ${data.items.length} items`);
+          if (data && data.items && data.items.length > 0) {
+            console.log(`[budget] Loaded pre-fetched data for ${year}: ${data.totalB}B NIS`);
             saveToCache(data.year, data);
             applyBudgetData(data);
             return;
           }
         }
-      } catch (e) {
-        console.log('[budget] No pre-fetched budget-data.json');
-      }
+      } catch (e) { /* no pre-fetched file for this year */ }
 
-      // 3. Try obudget.org API directly (works if CORS is allowed)
+      // 2b. Try generic budget-data.json
+      try {
+        const jsonResp = await fetch('budget-data.json');
+        if (jsonResp.ok) {
+          const data = await jsonResp.json();
+          if (data && data.year === year && data.items && data.items.length > 0) {
+            console.log(`[budget] Loaded pre-fetched data: ${data.totalB}B NIS`);
+            saveToCache(data.year, data);
+            applyBudgetData(data);
+            return;
+          }
+        }
+      } catch (e) { /* no pre-fetched file */ }
+
+      // 3. Try obudget.org API directly
       const fetched = await tryFetchBudget(year);
       if (fetched) {
         fetched.fetchedAt = new Date().toISOString();
@@ -960,13 +975,41 @@
         return;
       }
 
-      // 4. Last resort: hardcoded 2025 fallback
-      console.log('[budget] All strategies failed, using hardcoded 2025 data');
-      applyBudgetData(FALLBACK_2025);
+      // 4. Fallback for 2025
+      if (year === 2025 || FALLBACK_2025) {
+        console.log(`[budget] Using hardcoded fallback for ${year}`);
+        const fb = { ...FALLBACK_2025, year };
+        applyBudgetData(fb);
+        return;
+      }
+
+      console.log(`[budget] No data found for ${year}`);
     }
 
-    // Start loading budget data immediately
-    initBudgetData();
+    // Populate year selector and set up change handler
+    function initYearSelector() {
+      const sel = document.getElementById('yearSelect');
+      const currentYear = new Date().getFullYear();
+      const defaultYear = currentYear - 1;
+
+      for (let y = defaultYear; y >= 2022; y--) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = `שנת ${y}`;
+        if (y === defaultYear) opt.selected = true;
+        sel.appendChild(opt);
+      }
+
+      sel.addEventListener('change', () => {
+        const year = parseInt(sel.value);
+        budgetItems = []; // clear while loading
+        loadBudgetForYear(year);
+      });
+    }
+
+    // Initialize
+    initYearSelector();
+    loadBudgetForYear(parseInt(document.getElementById('yearSelect').value));
 
     // ==========================================
     // VAT-exempt and foreign transaction detection

@@ -80,9 +80,11 @@ for l in sorted(by_len.keys()):
 # Try many strategies to find the right query
 echo ""
 echo "========================================="
-echo "STRATEGY 1: budget table, all depths"
+echo "STRATEGY 1: budget table, all depths (500 rows)"
 echo "========================================="
-query_api "select code,title,depth,net_revised,net_allocated from budget where year=${YEAR} and net_revised > 0 order by depth,code limit 100" "All depths, sorted by depth"
+query_api "select code,title,depth,net_revised,net_allocated from budget where year=${YEAR} and net_revised > 0 order by net_revised desc" "All items sorted by size"
+# Save the latest query result for the build step
+ls -t /tmp/budget_query_*.json 2>/dev/null | head -1 | xargs -I{} cp {} /tmp/budget_strategy1.json 2>/dev/null || true
 
 echo ""
 echo "========================================="
@@ -122,43 +124,46 @@ query_api "select code,title,net_revised,net_allocated from budget where year=${
 
 echo ""
 echo "========================================="
-echo "BUILDING OUTPUT"
+echo "BUILDING OUTPUT (using data from strategy 1)"
 echo "========================================="
 
-# Now try to build the actual output file
-# We prefer: 4-char codes starting with "00" (ministry level)
+# Use the data already fetched in strategy 1 (to avoid re-fetching and hitting rate limits)
 python3 << PYEOF
-import json, urllib.request, urllib.parse, sys
+import json, sys
 from datetime import datetime
 
 YEAR = ${YEAR}
-API = "https://next.obudget.org/api/query"
 
-def fetch(sql):
-    url = f"{API}?query={urllib.parse.quote(sql)}&page_size=500"
-    with urllib.request.urlopen(url) as resp:
-        data = json.loads(resp.read())
-    return data.get('rows', data if isinstance(data, list) else [])
-
-# Try 4-char ministry codes
-rows = fetch(f"select code,title,net_revised,net_allocated from budget where year={YEAR} and code like '00__' and net_revised > 0 order by net_revised desc")
-if not rows:
-    # Fallback: all items, pick best code length
-    rows = fetch(f"select code,title,net_revised,net_allocated from budget where year={YEAR} and net_revised > 0 order by net_revised desc")
-    by_len = {}
-    for r in rows:
-        code = (r.get('code') or '').replace('.', '')
-        l = len(code)
-        if l not in by_len: by_len[l] = []
-        by_len[l].append(r)
-    best_len, best_total = None, 0
-    for l, items in by_len.items():
-        total = sum(r.get('net_revised') or r.get('net_allocated') or 0 for r in items)
-        if total > best_total: best_total, best_len = total, l
-    rows = by_len.get(best_len, []) if best_len else []
+# Read the cached result from strategy 1
+try:
+    with open('/tmp/budget_strategy1.json') as f:
+        data = json.load(f)
+    rows = data.get('rows', data if isinstance(data, list) else [])
+except:
+    rows = []
 
 if not rows:
-    print("No valid data found")
+    print("No data from strategy 1, cannot build output")
+    sys.exit(0)
+
+# Group by code length, pick the level with most items that looks like expenditure
+by_len = {}
+for r in rows:
+    code = (r.get('code') or '').replace('.', '')
+    l = len(code)
+    if l not in by_len: by_len[l] = []
+    by_len[l].append(r)
+
+# Pick the code length with the largest total
+best_len, best_total = None, 0
+for l, items in by_len.items():
+    total = sum(r.get('net_revised') or r.get('net_allocated') or 0 for r in items)
+    if total > best_total:
+        best_total, best_len = total, l
+
+rows = by_len.get(best_len, []) if best_len else []
+if not rows:
+    print("No valid rows found")
     sys.exit(0)
 
 total_nis = sum(r.get('net_revised') or r.get('net_allocated') or 0 for r in rows)
@@ -184,7 +189,7 @@ for item in items[:5]:
 
 with open('budget-data.json', 'w', encoding='utf-8') as f:
     json.dump(result, f, ensure_ascii=False, indent=2)
-print(f"Saved to budget-data.json")
+print("Saved to budget-data.json")
 PYEOF
 
 if [ -f "${OUTPUT}" ]; then
