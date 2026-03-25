@@ -958,7 +958,7 @@
       }
       // dots only: parseFloat handles naturally
 
-      return Math.abs(parseFloat(s)) || 0;
+      return parseFloat(s) || 0;
     }
 
     function isVatExempt(text) {
@@ -1003,28 +1003,16 @@
         return;
       }
 
-      // Detect the most common year in the file
-      const yearCounts = {};
-      if (dateCol) {
-        rows.forEach(row => {
-          const y = extractYear(row[dateCol]);
-          if (y) yearCounts[y] = (yearCounts[y] || 0) + 1;
-        });
-      }
-      const fileYears = Object.entries(yearCounts).sort((a, b) => b[1] - a[1]);
-      // Use budget year if it exists in the file; otherwise the most common year
-      const targetYear = fileYears.find(([y]) => +y === budgetYear)
-        ? budgetYear
-        : (fileYears.length > 0 ? +fileYears[0][0] : null);
-
+      const targetYear = budgetYear;
       let totalExpenses = 0;
       let vatEligible = 0;
       let vatExcluded = 0;
       let skippedYear = 0;
+      let skippedPositive = 0;
 
       rows.forEach(row => {
-        // Filter by detected target year (skip other years)
-        if (targetYear && dateCol && row[dateCol]) {
+        // 1. Filter by budget year only
+        if (dateCol && row[dateCol]) {
           const rowYear = extractYear(row[dateCol]);
           if (rowYear && rowYear !== targetYear) {
             skippedYear++;
@@ -1032,13 +1020,21 @@
           }
         }
 
-        const amount = parseAmount(row[amountCol]);
-        if (amount === 0) return;
+        // 2. Only take negative values (expenses). Positive = income, skip.
+        const rawAmount = parseAmount(row[amountCol]);
+        if (rawAmount >= 0) {
+          if (rawAmount > 0) skippedPositive++;
+          return;
+        }
+
+        // 3. Convert to positive for our calculations
+        const amount = Math.abs(rawAmount);
 
         totalExpenses += amount;
         const text = (descCol ? row[descCol] : '') + ' ' + (catCol ? row[catCol] : '');
         const curVal = curCol ? row[curCol] : '';
 
+        // 4. Only count Israeli, VAT-liable expenses
         if (isForeign(text, curVal) || isVatExempt(text)) {
           vatExcluded += amount;
         } else {
@@ -1056,17 +1052,20 @@
       document.getElementById('vatAmount').textContent = formatCurrency(vatAmount);
       document.getElementById('vatSummary').classList.add('visible');
 
-      // Show year info
-      let yearNote = '';
-      if (targetYear && targetYear !== budgetYear) {
-        yearNote = `הקובץ מכיל הוצאות משנת ${targetYear}. לחישוב מדויק יותר, העלה את הנתונים של שנת ${budgetYear}.`;
-      }
+      // Show notes
+      const notes = [];
       if (skippedYear > 0) {
-        yearNote += (yearNote ? ' ' : '') + `דילגנו על ${skippedYear} שורות משנים אחרות.`;
+        notes.push(`דילגנו על ${skippedYear} שורות שלא משנת ${targetYear}.`);
       }
-      if (yearNote) {
+      if (totalExpenses === 0 && skippedYear > 0) {
+        notes.push(`לא נמצאו הוצאות לשנת ${targetYear}. ודא שהקובץ מכיל נתונים לשנה זו.`);
+      }
+      if (skippedPositive > 0) {
+        notes.push(`דילגנו על ${skippedPositive} שורות הכנסה (סכום חיובי).`);
+      }
+      if (notes.length > 0) {
         document.getElementById('vatSummary').insertAdjacentHTML('beforeend',
-          `<div class="vat-row" style="color:#f59e0b;margin-top:0.4rem;font-size:0.8rem">${yearNote}</div>`);
+          `<div class="vat-row" style="color:#f59e0b;margin-top:0.4rem;font-size:0.8rem">${notes.join(' ')}</div>`);
       }
     }
 
