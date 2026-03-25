@@ -419,7 +419,7 @@
         </div>
         <div class="field">
           <label for="capitalTax">מס רווחי הון</label>
-          <span class="hint">מס על השקעות, דיבידנדים, נדל"ן וכו׳</span>
+          <span class="hint">מתוך טופס 867 מהבנק/ברוקר, או טופס 1322 (דוח שנתי למס הכנסה)</span>
           <input type="text" id="capitalTax" inputmode="numeric" placeholder="לדוגמה: 8,000">
         </div>
 
@@ -456,6 +456,7 @@
               <span id="vatAmount">-</span>
             </div>
           </div>
+          <div id="fuelInfo"></div>
 
           <div class="or-divider">- או הזן ידנית -</div>
 
@@ -464,7 +465,34 @@
         </div>
       </div>
 
-      <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+      <!-- Optional: Property & Vehicle purchases -->
+      <div class="field full-width" style="margin-top:0.5rem">
+        <label style="color:#93c5fd;font-size:1rem;margin-bottom:0.5rem;display:block">רכישות גדולות בשנה האחרונה (אופציונלי)</label>
+
+        <div class="input-group" style="margin-bottom:0">
+          <div class="field">
+            <label for="propertyPrice">רכישת דירה — מחיר</label>
+            <span class="hint">אם רכשת דירה השנה, הזן את מחיר הרכישה</span>
+            <input type="text" id="propertyPrice" inputmode="numeric" placeholder="לדוגמה: 2,000,000">
+          </div>
+          <div class="field">
+            <label for="propertyType">סוג דירה</label>
+            <span class="hint">דירה יחידה = מדרגות מס מופחתות</span>
+            <select id="propertyType" style="padding:0.75rem 1rem;border-radius:10px;border:1px solid #475569;background:#0f172a;color:#e2e8f0;font-size:1rem;">
+              <option value="">לא רכשתי דירה</option>
+              <option value="single">דירה יחידה</option>
+              <option value="investment">דירה להשקעה / דירה נוספת</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="vehiclePrice">רכישת רכב — מחיר</label>
+            <span class="hint">מחיר הרכב (כולל מע״מ). מס קנייה על רכב הוא כ-83% מהמחירון</span>
+            <input type="text" id="vehiclePrice" inputmode="numeric" placeholder="לדוגמה: 180,000">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:1.5rem">
         <button class="btn-calc" style="flex:1;min-width:200px" onclick="calculate()">חשב את התרומה שלי לתקציב</button>
         <button class="btn-budget-info" onclick="showBudgetModal()">מבנה התקציב</button>
       </div>
@@ -968,6 +996,7 @@
     // CSV Parsing & File Upload
     // ==========================================
     let parsedVatAmount = null;
+    let parsedFuelExcise = 0;
 
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
@@ -1092,10 +1121,14 @@
         return;
       }
 
+      const FUEL_KEYWORDS = ['דלק', 'פז', 'סונול', 'דור אלון', 'אלון', 'yellow',
+        'ten', 'טן', 'delek', 'fuel', 'gas station', 'דלקן'];
+
       const targetYear = budgetYear;
       let totalExpenses = 0;
       let vatEligible = 0;
       let vatExcluded = 0;
+      let fuelExpenses = 0;
       let skippedYear = 0;
       let skippedPositive = 0;
 
@@ -1121,6 +1154,12 @@
 
         totalExpenses += amount;
         const text = (descCol ? row[descCol] : '') + ' ' + (catCol ? row[catCol] : '');
+        const lower = text.toLowerCase();
+
+        // Track fuel expenses separately (for excise/blo tax)
+        if (FUEL_KEYWORDS.some(kw => lower.includes(kw))) {
+          fuelExpenses += amount;
+        }
 
         // 4. Only count Israeli, VAT-liable card purchases
         const method = methodCol ? (row[methodCol] || '') : '';
@@ -1135,11 +1174,28 @@
       const vatAmount = vatEligible * (18 / 118);
       parsedVatAmount = vatAmount;
 
+      // Fuel excise (blo): ~50% of fuel price is excise tax
+      // This is ON TOP of VAT (blo is charged before VAT is added)
+      parsedFuelExcise = fuelExpenses * 0.50;
+
       document.getElementById('totalExpenses').textContent = formatCurrency(totalExpenses);
       document.getElementById('vatEligible').textContent = formatCurrency(vatEligible);
       document.getElementById('vatExcluded').textContent = formatCurrency(vatExcluded);
       document.getElementById('vatAmount').textContent = formatCurrency(vatAmount);
       document.getElementById('vatSummary').classList.add('visible');
+
+      // Show fuel excise info if detected
+      if (fuelExpenses > 0) {
+        document.getElementById('vatSummary').insertAdjacentHTML('beforeend',
+          `<div class="vat-row" style="margin-top:0.4rem;border-top:1px solid #334155;padding-top:0.4rem">
+            <span>הוצאות דלק שזוהו:</span>
+            <span>${formatCurrency(fuelExpenses)}</span>
+          </div>
+          <div class="vat-row total">
+            <span>בלו על דלק (~50% ממחיר הדלק):</span>
+            <span>${formatCurrency(parsedFuelExcise)}</span>
+          </div>`);
+      }
 
       // Show notes
       const notes = [];
@@ -1201,6 +1257,41 @@
       return parseFloat(str.replace(/[^\d.]/g, '')) || 0;
     }
 
+    // Israeli property purchase tax (mas rechisha) - 2025 brackets
+    function calcPropertyTax(price, type) {
+      if (type === 'single') {
+        // דירה יחידה — מדרגות מופחתות (2025)
+        const brackets = [
+          { upto: 1978745, rate: 0 },
+          { upto: 2347040, rate: 0.035 },
+          { upto: 6055070, rate: 0.05 },
+          { upto: 20183560, rate: 0.08 },
+          { upto: Infinity, rate: 0.10 },
+        ];
+        return calcBrackets(price, brackets);
+      } else {
+        // דירה נוספת / להשקעה — מדרגות רגילות (2025)
+        const brackets = [
+          { upto: 6055070, rate: 0.08 },
+          { upto: 20183560, rate: 0.10 },
+          { upto: Infinity, rate: 0.10 },
+        ];
+        return calcBrackets(price, brackets);
+      }
+    }
+
+    function calcBrackets(amount, brackets) {
+      let tax = 0;
+      let prev = 0;
+      for (const b of brackets) {
+        if (amount <= prev) break;
+        const taxable = Math.min(amount, b.upto) - prev;
+        tax += taxable * b.rate;
+        prev = b.upto;
+      }
+      return Math.round(tax);
+    }
+
     function formatCurrency(n) {
       return '₪' + Math.round(n).toLocaleString('he-IL');
     }
@@ -1233,7 +1324,29 @@
         vatPaid = manualExpenses * (18 / 118);
       }
 
-      const totalTax = incomeTax + capitalTax + vatPaid;
+      // Fuel excise (blo)
+      const fuelExcise = parsedFuelExcise || 0;
+
+      // Property purchase tax (mas rechisha)
+      const propertyPrice = parseNum(document.getElementById('propertyPrice').value);
+      const propertyType = document.getElementById('propertyType').value;
+      let propertyTax = 0;
+      if (propertyPrice > 0 && propertyType) {
+        propertyTax = calcPropertyTax(propertyPrice, propertyType);
+      }
+
+      // Vehicle purchase tax (~83% of base price before VAT & tax)
+      // Base price ≈ catalog / 2.15 (includes 83% tax + 18% VAT on total)
+      const vehiclePrice = parseNum(document.getElementById('vehiclePrice').value);
+      let vehicleTax = 0;
+      if (vehiclePrice > 0) {
+        // Reverse-engineer: catalog = base * (1 + 0.83) * (1 + 0.18)
+        // base = catalog / 2.1594; tax = base * 0.83
+        const vehicleBase = vehiclePrice / 2.1594;
+        vehicleTax = Math.round(vehicleBase * 0.83);
+      }
+
+      const totalTax = incomeTax + capitalTax + vatPaid + fuelExcise + propertyTax + vehicleTax;
 
       if (totalTax === 0) {
         alert('נא להזין לפחות שדה אחד');
@@ -1250,6 +1363,9 @@
         { label: 'מס הכנסה', amount: incomeTax },
         { label: 'מס רווחי הון', amount: capitalTax },
         { label: 'מע״מ (משוער)', amount: vatPaid },
+        { label: 'בלו על דלק', amount: fuelExcise },
+        { label: 'מס רכישה (דירה)', amount: propertyTax },
+        { label: 'מס קנייה (רכב)', amount: vehicleTax },
       ].filter(p => p.amount > 0).forEach(p => {
         const div = document.createElement('div');
         div.className = 'tax-item';
