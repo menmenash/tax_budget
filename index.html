@@ -588,15 +588,17 @@
     // ==========================================
     const OBUDGET_API = 'https://next.obudget.org/api/query';
 
-    function buildBudgetQuery(year, depth) {
-      const sql = `select code,title,net_revised,net_allocated from budget where year=${year} and depth=${depth} order by net_revised desc`;
+    function buildBudgetQuery(year, level) {
+      // Table: budget_items_data, field: level (not depth)
+      // Per: https://github.com/OpenBudget/BudgetKey/blob/master/documentation/UsingTheAPI.md
+      const sql = `select code,title,net_revised,net_allocated from budget_items_data where year=${year} and level=${level} order by net_revised desc`;
       return `${OBUDGET_API}?query=${encodeURIComponent(sql)}&page_size=80`;
     }
 
     // Minimum total budget to consider valid (100B NIS = clearly a national budget, not a sub-ministry)
     const MIN_VALID_BUDGET_NIS = 100e9;
 
-    const CACHE_VERSION = 2; // Increment to invalidate old cached data
+    const CACHE_VERSION = 3; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -661,20 +663,21 @@
     // Strategy 1: SQL API query (structured JSON)
     // ------------------------------------------
     async function fetchViaApi(year) {
-      // Try depth=1 first (ministry level), then depth=2 as fallback
-      for (const depth of [1, 2, 3]) {
+      // Try different hierarchy levels to find ministry-level data
+      // Budget codes: XX=ministry (level 2), XXXX=dept (level 4), etc.
+      for (const level of [2, 1, 3, 4]) {
         try {
-          const resp = await fetch(buildBudgetQuery(year, depth));
+          const resp = await fetch(buildBudgetQuery(year, level));
           if (!resp.ok) continue;
           const json = await resp.json();
           const data = parseApiResponse(json, year);
           if (data && data.totalNIS >= MIN_VALID_BUDGET_NIS) {
-            console.log(`[budget] API depth=${depth} returned valid data: ${data.totalB}B NIS`);
+            console.log(`[budget] API level=${level} returned valid data: ${data.totalB}B NIS, ${data.items.length} items`);
             return data;
           }
-          console.log(`[budget] API depth=${depth} total too low (${data?.totalB}B), trying next depth`);
+          console.log(`[budget] API level=${level} total too low (${data?.totalB}B), trying next`);
         } catch (e) {
-          console.warn(`[budget] API depth=${depth} failed:`, e.message);
+          console.warn(`[budget] API level=${level} failed:`, e.message);
         }
       }
       return null;
@@ -685,7 +688,8 @@
     // Returns a single budget node with children
     // ------------------------------------------
     async function fetchViaBudgetItem(year) {
-      const url = `https://next.obudget.org/api/budget/${year}/00`;
+      // Try the item endpoint for the top-level budget
+      const url = `https://next.obudget.org/api/budget-item/${year}/00`;
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const json = await resp.json();
