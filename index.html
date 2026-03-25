@@ -881,22 +881,30 @@
       'ארנונה', 'עירייה', 'מועצה מקומית', 'מועצה אזורית',
       // National insurance / health tax
       'ביטוח לאומי', 'ביטוח בריאות', 'מס בריאות',
-      // Insurance (premiums are VAT-exempt)
-      'פוליסת ביטוח', 'ביטוח דירה', 'ביטוח רכב', 'ביטוח חיים', 'ביטוח מנהלים',
-      'הפניקס', 'מגדל ביטוח', 'הראל ביטוח', 'כלל ביטוח', 'מנורה',
+      // Insurance — generic + specific companies (premiums are VAT-exempt)
+      'ביטוח', 'פוליס',
+      'הפניקס', 'מגדל', 'הראל', 'כלל ביטוח', 'מנורה', 'ליברה', 'איילון',
+      'שירביט', 'אליהו', 'clal', 'phoenix', 'migdal', 'harel',
       // Education
       'שכר לימוד', 'גן ילדים', 'צהרון', 'מעון', 'אוניברסיט', 'מכללה',
       // Health funds
       'קופת חולים', 'מכבי', 'כללית', 'מאוחדת', 'לאומית',
       // Banking / finance
       'עמלת בנק', 'עמלה', 'דמי ניהול', 'ריבית',
-      // Transfers between accounts (not purchases)
+      // Transfers / standing orders
       'העברה', 'העברת', 'הפקדה', 'הפקדת',
-      // Savings & investments (not purchases)
+      'הוראת קבע', 'הו"ק', 'הוק ',
+      // P2P payment apps (transfers, not purchases)
+      'bit', 'ביט', 'paybox', 'פייבוקס', 'pepper', 'פפר',
+      // Savings & investments
       'חיסכון', 'קרן השתלמות', 'קופת גמל', 'פנסיה', 'קרן פנסיה',
       'השקעה', 'ני"ע', 'ניירות ערך',
       // Taxes & government fees
       'מס הכנסה', 'מע"מ', 'אגרה', 'אגרת',
+      // Donations / charities
+      'תרומה', 'קרן יחד', 'עמותה',
+      // Salary (if somehow negative)
+      'משכורת', 'שכר',
     ];
 
     const FOREIGN_KEYWORDS = [
@@ -904,12 +912,6 @@
       'netflix', 'spotify', 'apple.com', 'google play',
       'paypal', 'booking.com', 'airbnb', 'uber',
       'חו"ל', 'חול', 'foreign',
-    ];
-
-    // Bank transfer patterns — excluded unless clearly a purchase
-    const TRANSFER_KEYWORDS = [
-      'העברה', 'העברת', 'הפקדה', 'הפקדת', 'הוראת קבע',
-      'הו"ק', 'הוק', 'משיכת', 'transfer',
     ];
 
     // ==========================================
@@ -979,21 +981,7 @@
       return parseFloat(s) || 0;
     }
 
-    function isVatExempt(text) {
-      const lower = text.toLowerCase();
-      return VAT_EXEMPT_KEYWORDS.some(kw => lower.includes(kw));
-    }
-
-    function isForeign(text, curVal) {
-      if (curVal) {
-        const cur = curVal.trim().toUpperCase();
-        if (cur && cur !== 'ILS' && cur !== 'שקל' && cur !== 'ש"ח' && cur !== '₪' && cur !== 'שח' && cur !== 'שקלים') {
-          return true;
-        }
-      }
-      const lower = text.toLowerCase();
-      return FOREIGN_KEYWORDS.some(kw => lower.includes(kw));
-    }
+    // (VAT-exempt and foreign checks are now inside isNotPurchase)
 
     // Credit card company names — only these are treated as purchases
     const CARD_COMPANIES = [
@@ -1007,18 +995,24 @@
       'diners', 'דיינרס',
     ];
 
-    function isBankTransfer(text, method) {
+    function isNotPurchase(text, method) {
+      const lower = text.toLowerCase();
+
+      // 1. Always check business name first — even if paid by card,
+      //    these are NOT VAT-liable purchases:
+      if (VAT_EXEMPT_KEYWORDS.some(kw => lower.includes(kw))) return true;
+
+      // 2. Check payment method: only card companies = purchase
       const methodLower = method.toLowerCase().trim();
-      // If we have a payment method column, use whitelist approach:
-      // Only credit card = purchase. Everything else = transfer/excluded.
       if (methodLower) {
         const isCard = CARD_COMPANIES.some(cc => methodLower.includes(cc));
-        if (isCard) return false;  // card purchase — not a transfer
-        return true;  // bank, bit, paybox, standing order, etc. — treat as transfer
+        if (!isCard) return true;  // bank transfer, bit, etc.
       }
-      // No method column: fall back to keyword detection in description
-      const lower = text.toLowerCase();
-      return TRANSFER_KEYWORDS.some(kw => lower.includes(kw));
+
+      // 3. Even with a card, check for foreign transactions
+      if (FOREIGN_KEYWORDS.some(kw => lower.includes(kw))) return true;
+
+      return false;  // card purchase at a regular business = VAT-liable
     }
 
     function extractYear(dateStr) {
@@ -1039,7 +1033,7 @@
       const amountCol = findColumn(headers, ['סכום', 'חיוב', 'amount', 'chargedamount', 'sum', 'total', 'סה"כ', 'שקל']);
       const descCol = findColumn(headers, ['שם', 'תיאור', 'בית עסק', 'עסק', 'description', 'name', 'פירוט']);
       const catCol = findColumn(headers, ['קטגוריה', 'category', 'סוג', 'קבוצה']);
-      const curCol = findColumn(headers, ['מטבע', 'currency', 'originalcurrency', 'cur']);
+      // curCol not needed — foreign detection is by business name keywords
       const dateCol = findColumn(headers, ['תאריך', 'date', 'processeddate']);
       const methodCol = findColumn(headers, ['אמצעי', 'סוג תנועה', 'method', 'channel']);
 
@@ -1077,12 +1071,10 @@
 
         totalExpenses += amount;
         const text = (descCol ? row[descCol] : '') + ' ' + (catCol ? row[catCol] : '');
-        const curVal = curCol ? row[curCol] : '';
 
-        // 4. Only count Israeli, VAT-liable expenses
-        // Exclude: foreign, VAT-exempt, and bank transfers
+        // 4. Only count Israeli, VAT-liable card purchases
         const method = methodCol ? (row[methodCol] || '') : '';
-        if (isForeign(text, curVal) || isVatExempt(text) || isBankTransfer(text, method)) {
+        if (isNotPurchase(text, method)) {
           vatExcluded += amount;
         } else {
           vatEligible += amount;
