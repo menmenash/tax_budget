@@ -19,7 +19,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Fetch budget data from obudget.org API
-        run: bash fetch-budget.sh
+        run: |
+          bash fetch-budget.sh
+          echo "--- Files created ---"
+          ls -la budget-data.json 2>/dev/null || echo "budget-data.json NOT created"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -39,12 +42,14 @@ jobs:
             cache-control: public, max-age=300
 
       - name: Upload budget data JSON
-        uses: google-github-actions/upload-cloud-storage@v2
-        if: hashFiles('budget-data.json') != ''
-        with:
-          path: budget-data.json
-          destination: ${{ secrets.GCS_BUCKET_NAME }}
-          process_gcloudignore: false
-          headers: |-
-            content-type: application/json; charset=utf-8
-            cache-control: public, max-age=86400
+        if: ${{ success() }}
+        run: |
+          if [ -f budget-data.json ]; then
+            echo "Uploading budget-data.json..."
+            gcloud storage cp budget-data.json gs://${{ secrets.GCS_BUCKET_NAME }}/budget-data.json \
+              --content-type="application/json; charset=utf-8" \
+              --cache-control="public, max-age=86400"
+            echo "Done!"
+          else
+            echo "No budget-data.json found, skipping upload"
+          fi

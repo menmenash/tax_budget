@@ -619,9 +619,11 @@
     // Budget codes: 2-digit = ministry, 4-digit = dept, etc.
     // We fetch all items and pick the right level in JS
     // Per: https://github.com/OpenBudget/BudgetKey
-    const MIN_VALID_BUDGET_NIS = 100e9;
+    // First query ("no-depth") fetches everything, then we group by code
+    // length and pick the level with the largest total
+    const MIN_VALID_BUDGET_NIS = 50e9; // lowered: partial data is better than fallback
 
-    const CACHE_VERSION = 7; // Increment to invalidate old cached data
+    const CACHE_VERSION = 8; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -690,7 +692,13 @@
       const strategies = [
         { name: 'budget_items_data', sql: `select code,title,net_revised,net_allocated from budget_items_data where year=${year} order by net_revised desc` },
         { name: 'budget depth=2', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 order by net_revised desc` },
+        // Codes are like "00.37.02" → depth=2 gives 6-char codes (sub-items)
+        // We need to find the ministry level. Try multiple approaches:
+        { name: 'budget no-depth', sql: `select distinct code,title,net_revised,net_allocated,depth from budget where year=${year} and net_revised > 0 order by net_revised desc` },
+        { name: 'budget_items_data', sql: `select code,title,net_revised,net_allocated from budget_items_data where year=${year} and net_revised > 0 order by net_revised desc` },
+        { name: 'budget depth=2', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 order by net_revised desc` },
         { name: 'budget depth=1', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=1 order by net_revised desc` },
+        { name: 'budget depth=0', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=0 order by net_revised desc` },
       ];
 
       for (const strat of strategies) {
