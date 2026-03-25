@@ -387,13 +387,12 @@
 
       <div class="budget-grid" id="budgetGrid"></div>
 
-      <div class="source-info">
-        <strong>מקור נתוני התקציב:</strong> תקציב המדינה שאושר לשנת 2025 (~756 מיליארד ש״ח ברוטו, כולל ~136 מיליארד החזר חובות).
-        מבוסס על נתוני
-        <a href="https://next.obudget.org/i/budget/00/2025" target="_blank" rel="noopener">מפתח התקציב</a>,
-        <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>
-        ו<a href="https://fs.knesset.gov.il/globaldocs/MMM/180b7347-20bd-ef11-a855-005056aa1f91/2_180b7347-20bd-ef11-a855-005056aa1f91_11_20782.pdf" target="_blank" rel="noopener">מרכז המחקר של הכנסת (PDF)</a>.
+      <div class="source-info" id="sourceInfo">
+        <strong>מקור נתוני התקציב:</strong>
+        <span id="sourceText">טוען נתונים...</span>
       </div>
+
+      <div id="dataStatus" style="text-align:center;margin-top:0.5rem;font-size:0.75rem;color:#475569;"></div>
 
       <p class="disclaimer">
         * החישוב הוא הערכה בלבד ואינו מהווה ייעוץ מקצועי.
@@ -404,42 +403,220 @@
 
   <script>
     // ==========================================
-    // Israel 2025 Government Budget Breakdown
-    // Sources:
-    //   - Knesset Research Center PDF (2025)
-    //   - next.obudget.org/i/budget/00/2025
-    //   - Times of Israel, Calcalist, Globes reporting
-    //
-    // Total gross budget: ~756B NIS
-    //   - Net spending cap: ~620B NIS
-    //   - Debt servicing: ~136B NIS
+    // Budget Data: Dynamic loading from obudget.org
+    // with localStorage cache per year + hardcoded fallback
     // ==========================================
-    const TOTAL_BUDGET_B = 756; // billions NIS (gross)
 
-    const budgetItems = [
-      // amountB = billions NIS, from approved 2025 budget
-      { name: "ביטחון והגנה",               amountB: 110,   icon: "🛡️", color: "#ef4444" },
-      { name: "החזר חובות וריבית",           amountB: 136,   icon: "🏦", color: "#8b5cf6" },
-      { name: "חינוך והשכלה גבוהה",          amountB: 92,    icon: "📚", color: "#f59e0b" },
-      { name: "ביטוח לאומי וקצבאות",         amountB: 61,    icon: "👵", color: "#f97316" },
-      { name: "בריאות",                      amountB: 59,    icon: "🏥", color: "#10b981" },
-      { name: "תשתיות ותחבורה",             amountB: 46.5,  icon: "🚆", color: "#06b6d4" },
-      { name: "רווחה ושירותים חברתיים",       amountB: 35,    icon: "🤝", color: "#ec4899" },
-      { name: "ביטחון פנים ומשטרה",          amountB: 25,    icon: "🚔", color: "#6366f1" },
-      { name: "פנסיה תקציבית",              amountB: 25,    icon: "💼", color: "#a855f7" },
-      { name: "שיכון ובינוי",                amountB: 18,    icon: "🏗️", color: "#0ea5e9" },
-      { name: "תרבות, ספורט ודת",            amountB: 8,     icon: "🎭", color: "#d946ef" },
-      { name: "עלייה וקליטה",               amountB: 7,     icon: "✈️", color: "#14b8a6" },
-      { name: "חקלאות וסביבה",              amountB: 7,     icon: "🌱", color: "#22c55e" },
-      { name: "מדע וטכנולוגיה",             amountB: 6,     icon: "🔬", color: "#0891b2" },
-      { name: "משפט ובתי משפט",             amountB: 5,     icon: "⚖️", color: "#64748b" },
-      { name: "משרדים אחרים ורזרבות",        amountB: 115.5, icon: "📊", color: "#475569" },
+    // Icon/color mapping for budget categories by keyword in title
+    const CATEGORY_STYLE = [
+      { keywords: ['ביטחון', 'בטחון', 'צבא', 'הגנה'],      icon: '🛡️', color: '#ef4444' },
+      { keywords: ['חינוך', 'השכלה'],                       icon: '📚', color: '#f59e0b' },
+      { keywords: ['בריאות'],                               icon: '🏥', color: '#10b981' },
+      { keywords: ['רווחה', 'שירותים חברתיים'],              icon: '🤝', color: '#ec4899' },
+      { keywords: ['תחבורה', 'תשתיות'],                     icon: '🚆', color: '#06b6d4' },
+      { keywords: ['חוב', 'ריבית', 'מילוות'],               icon: '🏦', color: '#8b5cf6' },
+      { keywords: ['ביטוח לאומי', 'קצבאות', 'גמלאות'],      icon: '👵', color: '#f97316' },
+      { keywords: ['פנסי'],                                 icon: '💼', color: '#a855f7' },
+      { keywords: ['משטרה', 'בטחון פנים', 'ביטחון פנימי'],   icon: '🚔', color: '#6366f1' },
+      { keywords: ['שיכון', 'בינוי', 'דיור'],               icon: '🏗️', color: '#0ea5e9' },
+      { keywords: ['עלייה', 'קליטה'],                       icon: '✈️', color: '#14b8a6' },
+      { keywords: ['תרבות', 'ספורט', 'דת'],                 icon: '🎭', color: '#d946ef' },
+      { keywords: ['חקלאות', 'סביבה', 'איכות הסביבה'],      icon: '🌱', color: '#22c55e' },
+      { keywords: ['מדע', 'טכנולוגיה', 'חלל'],              icon: '🔬', color: '#0891b2' },
+      { keywords: ['משפט', 'בתי משפט', 'שיפוט'],           icon: '⚖️', color: '#64748b' },
+      { keywords: ['כלכלה', 'תעשייה'],                      icon: '🏭', color: '#78716c' },
+      { keywords: ['חוץ'],                                  icon: '🌍', color: '#7c3aed' },
+      { keywords: ['פנים'],                                 icon: '🏛️', color: '#9333ea' },
+      { keywords: ['אנרגיה', 'מים', 'תשתית'],               icon: '⚡', color: '#eab308' },
     ];
 
-    // Calculate percentage from total gross budget
-    budgetItems.forEach(item => {
-      item.pct = (item.amountB / TOTAL_BUDGET_B) * 100;
-    });
+    function getCategoryStyle(title) {
+      const lower = title.toLowerCase();
+      for (const cat of CATEGORY_STYLE) {
+        if (cat.keywords.some(kw => lower.includes(kw))) {
+          return { icon: cat.icon, color: cat.color };
+        }
+      }
+      return { icon: '📊', color: '#475569' };
+    }
+
+    // Fallback data for 2025 (used when API is unavailable)
+    const FALLBACK_2025 = {
+      year: 2025,
+      totalB: 756,
+      items: [
+        { name: "ביטחון והגנה",               amountB: 110 },
+        { name: "החזר חובות וריבית",           amountB: 136 },
+        { name: "חינוך והשכלה גבוהה",          amountB: 92 },
+        { name: "ביטוח לאומי וקצבאות",         amountB: 61 },
+        { name: "בריאות",                      amountB: 59 },
+        { name: "תשתיות ותחבורה",             amountB: 46.5 },
+        { name: "רווחה ושירותים חברתיים",       amountB: 35 },
+        { name: "ביטחון פנים ומשטרה",          amountB: 25 },
+        { name: "פנסיה תקציבית",              amountB: 25 },
+        { name: "שיכון ובינוי",                amountB: 18 },
+        { name: "תרבות, ספורט ודת",            amountB: 8 },
+        { name: "עלייה וקליטה",               amountB: 7 },
+        { name: "חקלאות וסביבה",              amountB: 7 },
+        { name: "מדע וטכנולוגיה",             amountB: 6 },
+        { name: "משפט ובתי משפט",             amountB: 5 },
+        { name: "משרדים אחרים ורזרבות",        amountB: 115.5 },
+      ],
+      source: 'fallback',
+    };
+
+    // Active budget data (populated on load)
+    let budgetItems = [];
+    let budgetYear = new Date().getFullYear();
+    let budgetSource = '';
+
+    // ==========================================
+    // obudget.org API integration
+    // API: https://next.obudget.org/api/query?query=...
+    // depth=2 = ministry level
+    // ==========================================
+    const OBUDGET_API = 'https://next.obudget.org/api/query';
+
+    function buildBudgetQuery(year) {
+      const sql = `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 order by net_revised desc`;
+      return `${OBUDGET_API}?query=${encodeURIComponent(sql)}&page_size=80`;
+    }
+
+    function getCacheKey(year) {
+      return `tax_budget_cache_${year}`;
+    }
+
+    function loadFromCache(year) {
+      try {
+        const raw = localStorage.getItem(getCacheKey(year));
+        if (!raw) return null;
+        const cached = JSON.parse(raw);
+        if (cached && cached.year === year && cached.items && cached.items.length > 0) {
+          return cached;
+        }
+      } catch (e) { /* ignore */ }
+      return null;
+    }
+
+    function saveToCache(year, data) {
+      try {
+        localStorage.setItem(getCacheKey(year), JSON.stringify(data));
+      } catch (e) { /* ignore quota errors */ }
+    }
+
+    function parseApiResponse(json, year) {
+      // The API returns { rows: [ { code, title, net_revised, net_allocated, ... }, ... ] }
+      const rows = json.rows || json;
+      if (!Array.isArray(rows) || rows.length === 0) return null;
+
+      let totalNIS = 0;
+      const items = [];
+
+      for (const row of rows) {
+        const title = row.title || '';
+        // net_revised is the latest approved amount; fallback to net_allocated
+        const amountNIS = row.net_revised || row.net_allocated || 0;
+        if (amountNIS <= 0) continue;
+
+        totalNIS += amountNIS;
+        items.push({
+          name: title,
+          amountNIS: amountNIS,                     // in NIS (not billions)
+          amountB: Math.round(amountNIS / 1e9 * 10) / 10, // convert to billions, 1 decimal
+        });
+      }
+
+      // Sort by amount descending
+      items.sort((a, b) => b.amountNIS - a.amountNIS);
+
+      return {
+        year,
+        totalB: Math.round(totalNIS / 1e9 * 10) / 10,
+        items,
+        source: 'obudget',
+        fetchedAt: new Date().toISOString(),
+      };
+    }
+
+    async function fetchBudgetData(year) {
+      try {
+        const resp = await fetch(buildBudgetQuery(year));
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json = await resp.json();
+        const data = parseApiResponse(json, year);
+        if (data) {
+          saveToCache(year, data);
+          return data;
+        }
+      } catch (e) {
+        console.warn('obudget.org API fetch failed:', e.message);
+      }
+      return null;
+    }
+
+    function applyBudgetData(data) {
+      budgetYear = data.year;
+      budgetSource = data.source;
+
+      const totalB = data.totalB;
+      budgetItems = data.items.map(item => {
+        const style = getCategoryStyle(item.name);
+        const pct = (item.amountB / totalB) * 100;
+        return {
+          name: item.name,
+          amountB: item.amountB,
+          pct,
+          icon: style.icon,
+          color: style.color,
+        };
+      });
+
+      // Update source info in the page
+      const sourceTextEl = document.getElementById('sourceText');
+      const statusEl = document.getElementById('dataStatus');
+      const obudgetLink = `https://next.obudget.org/i/budget/00/${budgetYear}`;
+
+      if (data.source === 'obudget') {
+        sourceTextEl.innerHTML = `נתוני תקציב המדינה לשנת <strong>${budgetYear}</strong> (~${totalB} מיליארד ש״ח) נטענו אוטומטית מ<a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב (obudget.org)</a>.`;
+        statusEl.textContent = data.fetchedAt
+          ? `נתונים נשמרו ב-cache. עדכון אחרון: ${new Date(data.fetchedAt).toLocaleDateString('he-IL')}`
+          : '';
+      } else {
+        sourceTextEl.innerHTML = `נתוני תקציב ${budgetYear} (fallback). לא הצלחנו לטעון מ-<a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב</a> — משתמשים בנתונים שמורים. מקור: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>.`;
+        statusEl.textContent = '';
+      }
+    }
+
+    async function initBudgetData() {
+      const year = new Date().getFullYear();
+
+      // 1. Check localStorage cache for this year
+      const cached = loadFromCache(year);
+      if (cached) {
+        applyBudgetData(cached);
+        return;
+      }
+
+      // 2. Try fetching from obudget.org API
+      const fetched = await fetchBudgetData(year);
+      if (fetched) {
+        applyBudgetData(fetched);
+        return;
+      }
+
+      // 3. If current year fails, try previous year from API
+      const prevFetched = await fetchBudgetData(year - 1);
+      if (prevFetched) {
+        applyBudgetData(prevFetched);
+        return;
+      }
+
+      // 4. Last resort: hardcoded 2025 fallback
+      applyBudgetData(FALLBACK_2025);
+    }
+
+    // Start loading budget data immediately
+    initBudgetData();
 
     // ==========================================
     // VAT-exempt and foreign transaction detection
@@ -625,6 +802,11 @@
     });
 
     function calculate() {
+      if (budgetItems.length === 0) {
+        alert('נתוני התקציב עדיין נטענים, נסה שוב בעוד רגע.');
+        return;
+      }
+
       const incomeTax = parseNum(document.getElementById('incomeTax').value);
       const capitalTax = parseNum(document.getElementById('capitalTax').value);
       const manualExpenses = parseNum(document.getElementById('manualExpenses').value);
@@ -678,7 +860,7 @@
             <div class="card-icon" style="background:${item.color}22">${item.icon}</div>
             <div>
               <div class="card-name">${item.name}</div>
-              <div class="card-pct">${item.pct.toFixed(1)}% מהתקציב (${item.amountB} מיליארד ₪)</div>
+              <div class="card-pct">${item.pct.toFixed(1)}% מתקציב ${budgetYear} (${item.amountB} מיליארד ₪)</div>
             </div>
           </div>
           <div class="card-amount" style="color:${item.color}">${formatCurrency(amount)}</div>
