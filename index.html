@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>לאן הולך הכסף שלך? - מחשבון תקציב המדינה</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #94a3b8;
+      margin-bottom: 2rem;
+      font-size: 1rem;
+    }
+
+    /* Input Section */
+    .input-section {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid #334155;
+    }
+
+    .input-section h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1.5rem;
+      color: #93c5fd;
+    }
+
+    .input-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 600px) {
+      .input-group { grid-template-columns: 1fr; }
+      h1 { font-size: 1.5rem; }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .field.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+    }
+
+    .field .hint {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .field input[type="text"] {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 1.1rem;
+      direction: ltr;
+      text-align: right;
+      transition: border-color 0.2s;
+    }
+
+    .field input[type="text"]:focus {
+      outline: none;
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+    }
+
+    /* File upload area */
+    .upload-area {
+      border: 2px dashed #475569;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .upload-area:hover, .upload-area.dragover {
+      border-color: #60a5fa;
+      background: rgba(96, 165, 250, 0.05);
+    }
+
+    .upload-area.has-file {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.05);
+    }
+
+    .upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .upload-text { color: #94a3b8; font-size: 0.9rem; }
+    .upload-text strong { color: #60a5fa; }
+    .file-name { color: #22c55e; font-weight: 600; margin-top: 0.5rem; }
+
+    /* VAT summary */
+    .vat-summary {
+      display: none;
+      background: #162032;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .vat-summary.visible { display: block; }
+
+    .vat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.3rem 0;
+      color: #94a3b8;
+    }
+
+    .vat-row.total {
+      border-top: 1px solid #334155;
+      margin-top: 0.3rem;
+      padding-top: 0.5rem;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .vat-row .excluded { color: #f87171; }
+    .vat-row .included { color: #4ade80; }
+
+    .or-divider {
+      text-align: center;
+      color: #475569;
+      margin: 0.75rem 0;
+      font-size: 0.85rem;
+    }
+
+    .btn-calc {
+      display: block;
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-calc:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+    }
+
+    /* Results */
+    .results-section { display: none; }
+    .results-section.visible { display: block; }
+
+    .total-banner {
+      background: linear-gradient(135deg, #1e3a5f, #312e81);
+      border-radius: 16px;
+      padding: 1.5rem 2rem;
+      text-align: center;
+      margin-bottom: 1rem;
+      border: 1px solid #4338ca;
+    }
+
+    .total-banner .label {
+      font-size: 1rem;
+      color: #a5b4fc;
+      margin-bottom: 0.25rem;
+    }
+
+    .total-banner .amount {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .tax-breakdown-banner {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+      padding: 0 1rem;
+    }
+
+    .tax-item { text-align: center; }
+    .tax-item .tax-label { font-size: 0.8rem; color: #64748b; }
+    .tax-item .tax-amount { font-size: 1rem; font-weight: 600; color: #cbd5e1; }
+
+    .budget-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .budget-grid { grid-template-columns: 1fr; }
+    }
+
+    .budget-card {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 1.25rem;
+      border: 1px solid #334155;
+      transition: transform 0.15s;
+    }
+
+    .budget-card:hover { transform: translateY(-3px); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card-icon {
+      font-size: 1.6rem;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .card-name { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; }
+    .card-pct { font-size: 0.8rem; color: #64748b; }
+    .card-amount { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+
+    .bar-bg {
+      height: 8px;
+      border-radius: 4px;
+      background: #0f172a;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.8s ease;
+    }
+
+    .monthly {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 0.4rem;
+    }
+
+    .source-info {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      margin-top: 2rem;
+      border: 1px solid #334155;
+      font-size: 0.82rem;
+      color: #64748b;
+      line-height: 1.7;
+    }
+
+    .source-info a { color: #60a5fa; text-decoration: none; }
+    .source-info a:hover { text-decoration: underline; }
+
+    .disclaimer {
+      text-align: center;
+      color: #475569;
+      font-size: 0.78rem;
+      margin-top: 1.5rem;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>לאן הולך הכסף שלך?</h1>
+    <p class="subtitle">גלה כמה מהמיסים שלך הולכים לכל סעיף בתקציב המדינה</p>
+
+    <!-- Inputs -->
+    <div class="input-section">
+      <h2>הזן את נתוני המיסים שלך</h2>
+      <div class="input-group">
+        <div class="field">
+          <label for="incomeTax">מס הכנסה שנתי</label>
+          <span class="hint">מתוך טופס 106 / שומה שנתית</span>
+          <input type="text" id="incomeTax" inputmode="numeric" placeholder="לדוגמה: 45,000">
+        </div>
+        <div class="field">
+          <label for="capitalTax">מס רווחי הון</label>
+          <span class="hint">מס על השקעות, דיבידנדים, נדל"ן וכו׳</span>
+          <input type="text" id="capitalTax" inputmode="numeric" placeholder="לדוגמה: 8,000">
+        </div>
+
+        <!-- Raiseup file upload OR manual entry for VAT -->
+        <div class="field full-width">
+          <label>מע״מ ששילמת (18% מהוצאות בישראל)</label>
+          <span class="hint">העלה סיכום הוצאות מ-Raiseup (אקסל/CSV) - נחשב מע״מ רק על הוצאות בישראל החייבות במע״מ</span>
+
+          <div class="upload-area" id="uploadArea">
+            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.tsv">
+            <div class="upload-icon">📎</div>
+            <div class="upload-text">
+              <strong>לחץ כאן</strong> או גרור קובץ אקסל/CSV מ-Raiseup
+            </div>
+            <div class="file-name" id="fileName"></div>
+          </div>
+
+          <div id="vatSummary" class="vat-summary">
+            <div class="vat-row">
+              <span>סך הוצאות בקובץ:</span>
+              <span id="totalExpenses">-</span>
+            </div>
+            <div class="vat-row">
+              <span>הוצאות בישראל חייבות במע״מ:</span>
+              <span class="included" id="vatEligible">-</span>
+            </div>
+            <div class="vat-row">
+              <span>הוצאות פטורות / חו״ל (לא נספרו):</span>
+              <span class="excluded" id="vatExcluded">-</span>
+            </div>
+            <div class="vat-row total">
+              <span>מע״מ ששילמת (משוער):</span>
+              <span id="vatAmount">-</span>
+            </div>
+          </div>
+
+          <div class="or-divider">- או הזן ידנית -</div>
+
+          <input type="text" id="manualExpenses" inputmode="numeric" placeholder="סך הוצאות שנתיות בישראל (כולל מע״מ)">
+          <span class="hint">אם אין לך קובץ — הזן סכום כולל של הוצאות. נחשב 18% מע״מ מתוכו.</span>
+        </div>
+      </div>
+
+      <button class="btn-calc" onclick="calculate()">חשב את התרומה שלי לתקציב</button>
+    </div>
+
+    <!-- Results -->
+    <div class="results-section" id="results">
+      <div class="total-banner">
+        <div class="label">סה״כ מיסים שנתיים (משוער)</div>
+        <div class="amount" id="totalTax"></div>
+      </div>
+
+      <div class="tax-breakdown-banner" id="taxBreakdown"></div>
+
+      <div class="budget-grid" id="budgetGrid"></div>
+
+      <div class="source-info" id="sourceInfo">
+        <strong>מקור נתוני התקציב:</strong>
+        <span id="sourceText">טוען נתונים...</span>
+      </div>
+
+      <div id="dataStatus" style="text-align:center;margin-top:0.5rem;font-size:0.75rem;color:#475569;"></div>
+
+      <p class="disclaimer">
+        * החישוב הוא הערכה בלבד ואינו מהווה ייעוץ מקצועי.
+        ביטוח לאומי ומס בריאות לא נכללים — הם מנוהלים על ידי המוסד לביטוח לאומי ולא במסגרת תקציב המדינה.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // Budget Data: Dynamic loading from obudget.org
+    // with localStorage cache per year + hardcoded fallback
+    // ==========================================
+
+    // Icon/color mapping for budget categories by keyword in title
+    const CATEGORY_STYLE = [
+      { keywords: ['ביטחון', 'בטחון', 'צבא', 'הגנה'],      icon: '🛡️', color: '#ef4444' },
+      { keywords: ['חינוך', 'השכלה'],                       icon: '📚', color: '#f59e0b' },
+      { keywords: ['בריאות'],                               icon: '🏥', color: '#10b981' },
+      { keywords: ['רווחה', 'שירותים חברתיים'],              icon: '🤝', color: '#ec4899' },
+      { keywords: ['תחבורה', 'תשתיות'],                     icon: '🚆', color: '#06b6d4' },
+      { keywords: ['חוב', 'ריבית', 'מילוות'],               icon: '🏦', color: '#8b5cf6' },
+      { keywords: ['ביטוח לאומי', 'קצבאות', 'גמלאות'],      icon: '👵', color: '#f97316' },
+      { keywords: ['פנסי'],                                 icon: '💼', color: '#a855f7' },
+      { keywords: ['משטרה', 'בטחון פנים', 'ביטחון פנימי'],   icon: '🚔', color: '#6366f1' },
+      { keywords: ['שיכון', 'בינוי', 'דיור'],               icon: '🏗️', color: '#0ea5e9' },
+      { keywords: ['עלייה', 'קליטה'],                       icon: '✈️', color: '#14b8a6' },
+      { keywords: ['תרבות', 'ספורט', 'דת'],                 icon: '🎭', color: '#d946ef' },
+      { keywords: ['חקלאות', 'סביבה', 'איכות הסביבה'],      icon: '🌱', color: '#22c55e' },
+      { keywords: ['מדע', 'טכנולוגיה', 'חלל'],              icon: '🔬', color: '#0891b2' },
+      { keywords: ['משפט', 'בתי משפט', 'שיפוט'],           icon: '⚖️', color: '#64748b' },
+      { keywords: ['כלכלה', 'תעשייה'],                      icon: '🏭', color: '#78716c' },
+      { keywords: ['חוץ'],                                  icon: '🌍', color: '#7c3aed' },
+      { keywords: ['פנים'],                                 icon: '🏛️', color: '#9333ea' },
+      { keywords: ['אנרגיה', 'מים', 'תשתית'],               icon: '⚡', color: '#eab308' },
+    ];
+
+    function getCategoryStyle(title) {
+      const lower = title.toLowerCase();
+      for (const cat of CATEGORY_STYLE) {
+        if (cat.keywords.some(kw => lower.includes(kw))) {
+          return { icon: cat.icon, color: cat.color };
+        }
+      }
+      return { icon: '📊', color: '#475569' };
+    }
+
+    // Fallback data for 2025 (used when API is unavailable)
+    const FALLBACK_2025 = {
+      year: 2025,
+      totalB: 756,
+      items: [
+        { name: "ביטחון והגנה",               amountB: 110 },
+        { name: "החזר חובות וריבית",           amountB: 136 },
+        { name: "חינוך והשכלה גבוהה",          amountB: 92 },
+        { name: "ביטוח לאומי וקצבאות",         amountB: 61 },
+        { name: "בריאות",                      amountB: 59 },
+        { name: "תשתיות ותחבורה",             amountB: 46.5 },
+        { name: "רווחה ושירותים חברתיים",       amountB: 35 },
+        { name: "ביטחון פנים ומשטרה",          amountB: 25 },
+        { name: "פנסיה תקציבית",              amountB: 25 },
+        { name: "שיכון ובינוי",                amountB: 18 },
+        { name: "תרבות, ספורט ודת",            amountB: 8 },
+        { name: "עלייה וקליטה",               amountB: 7 },
+        { name: "חקלאות וסביבה",              amountB: 7 },
+        { name: "מדע וטכנולוגיה",             amountB: 6 },
+        { name: "משפט ובתי משפט",             amountB: 5 },
+        { name: "משרדים אחרים ורזרבות",        amountB: 115.5 },
+      ],
+      source: 'fallback',
+    };
+
+    // Active budget data (populated on load)
+    let budgetItems = [];
+    let budgetYear = new Date().getFullYear();
+    let budgetSource = '';
+
+    // ==========================================
+    // obudget.org API integration
+    // API: https://next.obudget.org/api/query?query=...
+    // depth=2 = ministry level
+    // ==========================================
+    const OBUDGET_API = 'https://next.obudget.org/api/query';
+
+    function buildBudgetQuery(year) {
+      const sql = `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 order by net_revised desc`;
+      return `${OBUDGET_API}?query=${encodeURIComponent(sql)}&page_size=80`;
+    }
+
+    function getCacheKey(year) {
+      return `tax_budget_cache_${year}`;
+    }
+
+    function loadFromCache(year) {
+      try {
+        const raw = localStorage.getItem(getCacheKey(year));
+        if (!raw) return null;
+        const cached = JSON.parse(raw);
+        if (cached && cached.year === year && cached.items && cached.items.length > 0) {
+          return cached;
+        }
+      } catch (e) { /* ignore */ }
+      return null;
+    }
+
+    function saveToCache(year, data) {
+      try {
+        localStorage.setItem(getCacheKey(year), JSON.stringify(data));
+      } catch (e) { /* ignore quota errors */ }
+    }
+
+    function parseApiResponse(json, year) {
+      // The API returns { rows: [ { code, title, net_revised, net_allocated, ... }, ... ] }
+      const rows = json.rows || json;
+      if (!Array.isArray(rows) || rows.length === 0) return null;
+
+      let totalNIS = 0;
+      const items = [];
+
+      for (const row of rows) {
+        const title = row.title || '';
+        // net_revised is the latest approved amount; fallback to net_allocated
+        const amountNIS = row.net_revised || row.net_allocated || 0;
+        if (amountNIS <= 0) continue;
+
+        totalNIS += amountNIS;
+        items.push({
+          name: title,
+          amountNIS: amountNIS,                     // in NIS (not billions)
+          amountB: Math.round(amountNIS / 1e9 * 10) / 10, // convert to billions, 1 decimal
+        });
+      }
+
+      // Sort by amount descending
+      items.sort((a, b) => b.amountNIS - a.amountNIS);
+
+      return {
+        year,
+        totalB: Math.round(totalNIS / 1e9 * 10) / 10,
+        items,
+        source: 'obudget',
+        fetchedAt: new Date().toISOString(),
+      };
+    }
+
+    // ------------------------------------------
+    // Strategy 1: SQL API query (structured JSON)
+    // ------------------------------------------
+    async function fetchViaApi(year) {
+      const resp = await fetch(buildBudgetQuery(year));
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      return parseApiResponse(json, year);
+    }
+
+    // ------------------------------------------
+    // Strategy 2: Direct budget item endpoint
+    // Returns a single budget node with children
+    // ------------------------------------------
+    async function fetchViaBudgetItem(year) {
+      const url = `https://next.obudget.org/api/budget/${year}/00`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+
+      // This endpoint may return { children: [...] } or similar structure
+      const children = json.children || json.items || [];
+      if (children.length === 0 && json.title) {
+        // Maybe nested differently - try to extract from the response
+        return null;
+      }
+      if (children.length > 0) {
+        return parseApiResponse(children, year);
+      }
+      return null;
+    }
+
+    // ------------------------------------------
+    // Strategy 3: Scrape the HTML page for
+    // embedded JSON / server-side rendered data
+    // ------------------------------------------
+    async function fetchViaPageScrape(year) {
+      const url = `https://next.obudget.org/i/budget/00/${year}`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const html = await resp.text();
+
+      // obudget.org is an SPA but may embed initial data as JSON
+      // Look for common patterns: __NEXT_DATA__, window.__data__, etc.
+      const patterns = [
+        /__NEXT_DATA__\s*=\s*({.+?})\s*<\/script>/s,
+        /window\.__data__\s*=\s*({.+?});/s,
+        /window\.__INITIAL_STATE__\s*=\s*({.+?});/s,
+        /"children"\s*:\s*(\[.+?\])\s*[,}]/s,
+      ];
+
+      for (const pat of patterns) {
+        const match = html.match(pat);
+        if (match) {
+          try {
+            const parsed = JSON.parse(match[1]);
+            // Try to find budget items in the parsed data
+            const items = extractBudgetFromParsed(parsed, year);
+            if (items) return items;
+          } catch (e) { /* continue to next pattern */ }
+        }
+      }
+
+      // Try to extract structured data from visible HTML table rows
+      const tableData = extractFromHtmlTable(html, year);
+      if (tableData) return tableData;
+
+      return null;
+    }
+
+    function extractBudgetFromParsed(obj, year) {
+      // Recursively search for an array of budget items
+      if (Array.isArray(obj)) {
+        // Check if this looks like budget rows
+        if (obj.length > 3 && obj[0] && (obj[0].title || obj[0].name)) {
+          const rows = obj.map(item => ({
+            title: item.title || item.name || '',
+            net_revised: item.net_revised || item.net_allocated || item.amount || item.value || 0,
+          })).filter(r => r.title && r.net_revised > 0);
+
+          if (rows.length > 3) {
+            return parseApiResponse(rows, year);
+          }
+        }
+      }
+
+      if (obj && typeof obj === 'object') {
+        for (const key of Object.keys(obj)) {
+          const result = extractBudgetFromParsed(obj[key], year);
+          if (result) return result;
+        }
+      }
+      return null;
+    }
+
+    function extractFromHtmlTable(html, year) {
+      // Try to parse visible Hebrew budget items from the page HTML
+      // Look for patterns like: title with amount in NIS
+      const itemRegex = /class="[^"]*item[^"]*"[^>]*>([^<]+)<[\s\S]*?[\d,]{4,}/g;
+      // This is a heuristic - might not match, which is fine (we fall back)
+      return null;
+    }
+
+    // ------------------------------------------
+    // Orchestration: try all strategies in order
+    // ------------------------------------------
+    async function tryFetchBudget(year) {
+      // Strategy 1: SQL API
+      try {
+        console.log(`[budget] Trying SQL API for ${year}...`);
+        const data = await fetchViaApi(year);
+        if (data) { data.source = 'obudget'; return data; }
+      } catch (e) {
+        console.warn(`[budget] SQL API failed for ${year}:`, e.message);
+      }
+
+      // Strategy 2: Direct budget item endpoint
+      try {
+        console.log(`[budget] Trying budget item endpoint for ${year}...`);
+        const data = await fetchViaBudgetItem(year);
+        if (data) { data.source = 'obudget'; return data; }
+      } catch (e) {
+        console.warn(`[budget] Budget item endpoint failed for ${year}:`, e.message);
+      }
+
+      // Strategy 3: Page scrape
+      try {
+        console.log(`[budget] Trying page scrape for ${year}...`);
+        const data = await fetchViaPageScrape(year);
+        if (data) { data.source = 'obudget-scrape'; return data; }
+      } catch (e) {
+        console.warn(`[budget] Page scrape failed for ${year}:`, e.message);
+      }
+
+      return null;
+    }
+
+    function applyBudgetData(data) {
+      budgetYear = data.year;
+      budgetSource = data.source;
+
+      const totalB = data.totalB;
+      budgetItems = data.items.map(item => {
+        const style = getCategoryStyle(item.name);
+        const pct = (item.amountB / totalB) * 100;
+        return {
+          name: item.name,
+          amountB: item.amountB,
+          pct,
+          icon: style.icon,
+          color: style.color,
+        };
+      });
+
+      // Update source info in the page
+      const sourceTextEl = document.getElementById('sourceText');
+      const statusEl = document.getElementById('dataStatus');
+      const obudgetLink = `https://next.obudget.org/i/budget/00/${budgetYear}`;
+
+      if (data.source === 'obudget' || data.source === 'obudget-scrape') {
+        const method = data.source === 'obudget-scrape' ? ' (מהדף)' : '';
+        sourceTextEl.innerHTML = `נתוני תקציב המדינה לשנת <strong>${budgetYear}</strong> (~${totalB} מיליארד ש״ח) נטענו אוטומטית מ<a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב (obudget.org)</a>${method}.`;
+        statusEl.textContent = data.fetchedAt
+          ? `נתונים נשמרו ב-cache. עדכון אחרון: ${new Date(data.fetchedAt).toLocaleDateString('he-IL')}`
+          : '';
+      } else {
+        sourceTextEl.innerHTML = `נתוני תקציב ${budgetYear} (נתונים שמורים). לא הצלחנו לטעון מ-<a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב</a>. מקור: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>.`;
+        statusEl.textContent = '';
+      }
+    }
+
+    async function initBudgetData() {
+      const year = new Date().getFullYear();
+
+      // 1. Check localStorage cache for this year
+      const cached = loadFromCache(year);
+      if (cached) {
+        console.log(`[budget] Using cached data for ${year}`);
+        applyBudgetData(cached);
+        return;
+      }
+
+      // 2. Try all fetch strategies for current year
+      const fetched = await tryFetchBudget(year);
+      if (fetched) {
+        fetched.fetchedAt = new Date().toISOString();
+        saveToCache(year, fetched);
+        applyBudgetData(fetched);
+        return;
+      }
+
+      // 3. Try previous year (cache first, then fetch)
+      const prevCached = loadFromCache(year - 1);
+      if (prevCached) {
+        console.log(`[budget] Using cached data for ${year - 1}`);
+        applyBudgetData(prevCached);
+        return;
+      }
+
+      const prevFetched = await tryFetchBudget(year - 1);
+      if (prevFetched) {
+        prevFetched.fetchedAt = new Date().toISOString();
+        saveToCache(year - 1, prevFetched);
+        applyBudgetData(prevFetched);
+        return;
+      }
+
+      // 4. Last resort: hardcoded 2025 fallback
+      console.log('[budget] All strategies failed, using hardcoded 2025 data');
+      applyBudgetData(FALLBACK_2025);
+    }
+
+    // Start loading budget data immediately
+    initBudgetData();
+
+    // ==========================================
+    // VAT-exempt and foreign transaction detection
+    // Used when parsing Raiseup CSV exports
+    // ==========================================
+    const VAT_EXEMPT_KEYWORDS = [
+      // Residential rent
+      'שכר דירה', 'שכ"ד', 'שכד',
+      // Municipal taxes
+      'ארנונה', 'עירייה', 'מועצה מקומית',
+      // National insurance / health tax (not VAT)
+      'ביטוח לאומי', 'ביטוח בריאות', 'מס בריאות',
+      // Education
+      'שכר לימוד', 'גן ילדים', 'צהרון', 'מעון',
+      // Health funds
+      'קופת חולים', 'מכבי', 'כללית', 'מאוחדת', 'לאומית',
+      // Banking / finance
+      'עמלת בנק', 'עמלה', 'ריבית משכנתא', 'משכנתא',
+    ];
+
+    const FOREIGN_KEYWORDS = [
+      'amazon.com', 'aliexpress', 'ebay',
+      'netflix', 'spotify', 'apple.com', 'google play',
+      'paypal', 'booking.com', 'airbnb', 'uber',
+      'חו"ל', 'חול', 'foreign',
+    ];
+
+    // ==========================================
+    // CSV Parsing & File Upload
+    // ==========================================
+    let parsedVatAmount = null;
+
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/);
+      if (lines.length < 2) return { headers: [], rows: [] };
+
+      const delimiter = lines[0].includes('\t') ? '\t' : ',';
+      const headers = lines[0].split(delimiter).map(h => h.replace(/"/g, '').trim());
+      const rows = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(delimiter).map(v => v.replace(/"/g, '').trim());
+        if (values.length < 2) continue;
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+        rows.push(row);
+      }
+      return { headers, rows };
+    }
+
+    function findColumn(headers, keywords) {
+      for (const kw of keywords) {
+        const found = headers.find(h => h.toLowerCase().includes(kw));
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function parseAmount(val) {
+      if (!val) return 0;
+      const cleaned = val.replace(/[^\d.\-]/g, '');
+      return Math.abs(parseFloat(cleaned)) || 0;
+    }
+
+    function isVatExempt(text) {
+      const lower = text.toLowerCase();
+      return VAT_EXEMPT_KEYWORDS.some(kw => lower.includes(kw));
+    }
+
+    function isForeign(text, curVal) {
+      if (curVal) {
+        const cur = curVal.trim().toUpperCase();
+        if (cur && cur !== 'ILS' && cur !== 'שקל' && cur !== 'ש"ח' && cur !== '₪' && cur !== 'שח' && cur !== 'שקלים') {
+          return true;
+        }
+      }
+      const lower = text.toLowerCase();
+      return FOREIGN_KEYWORDS.some(kw => lower.includes(kw));
+    }
+
+    function processFile(text) {
+      const { headers, rows } = parseCSV(text);
+      if (!headers.length || !rows.length) {
+        alert('לא הצלחנו לקרוא את הקובץ. ודא שזהו קובץ CSV תקין.');
+        return;
+      }
+
+      const amountCol = findColumn(headers, ['סכום', 'חיוב', 'amount', 'sum', 'total', 'סה"כ', 'שקל']);
+      const descCol = findColumn(headers, ['שם', 'תיאור', 'בית עסק', 'עסק', 'description', 'name', 'פירוט']);
+      const catCol = findColumn(headers, ['קטגוריה', 'category', 'סוג', 'קבוצה']);
+      const curCol = findColumn(headers, ['מטבע', 'currency', 'cur']);
+
+      if (!amountCol) {
+        alert('לא נמצאה עמודת סכום בקובץ.\nעמודות שנמצאו: ' + headers.join(', '));
+        return;
+      }
+
+      let totalExpenses = 0;
+      let vatEligible = 0;
+      let vatExcluded = 0;
+
+      rows.forEach(row => {
+        const amount = parseAmount(row[amountCol]);
+        if (amount === 0) return;
+
+        totalExpenses += amount;
+        const text = (descCol ? row[descCol] : '') + ' ' + (catCol ? row[catCol] : '');
+        const curVal = curCol ? row[curCol] : '';
+
+        if (isForeign(text, curVal) || isVatExempt(text)) {
+          vatExcluded += amount;
+        } else {
+          vatEligible += amount;
+        }
+      });
+
+      // VAT is included in Israeli prices: VAT = price * 18/118
+      const vatAmount = vatEligible * (18 / 118);
+      parsedVatAmount = vatAmount;
+
+      document.getElementById('totalExpenses').textContent = formatCurrency(totalExpenses);
+      document.getElementById('vatEligible').textContent = formatCurrency(vatEligible);
+      document.getElementById('vatExcluded').textContent = formatCurrency(vatExcluded);
+      document.getElementById('vatAmount').textContent = formatCurrency(vatAmount);
+      document.getElementById('vatSummary').classList.add('visible');
+    }
+
+    // File input events
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+
+    fileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('fileName').textContent = file.name;
+      uploadArea.classList.add('has-file');
+
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        processFile(ev.target.result);
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
+
+    uploadArea.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      this.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', function() {
+      this.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+      e.preventDefault();
+      this.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change'));
+      }
+    });
+
+    // ==========================================
+    // Main Calculation
+    // ==========================================
+    function parseNum(str) {
+      return parseFloat(str.replace(/[^\d.]/g, '')) || 0;
+    }
+
+    function formatCurrency(n) {
+      return '₪' + Math.round(n).toLocaleString('he-IL');
+    }
+
+    // Auto-format numbers with commas while typing
+    document.querySelectorAll('input[type="text"]').forEach(input => {
+      input.addEventListener('input', function() {
+        const raw = this.value.replace(/[^\d]/g, '');
+        if (raw) {
+          this.value = parseInt(raw).toLocaleString('he-IL');
+        }
+      });
+    });
+
+    function calculate() {
+      if (budgetItems.length === 0) {
+        alert('נתוני התקציב עדיין נטענים, נסה שוב בעוד רגע.');
+        return;
+      }
+
+      const incomeTax = parseNum(document.getElementById('incomeTax').value);
+      const capitalTax = parseNum(document.getElementById('capitalTax').value);
+      const manualExpenses = parseNum(document.getElementById('manualExpenses').value);
+
+      // VAT: prefer parsed file data, fallback to manual entry
+      let vatPaid = 0;
+      if (parsedVatAmount !== null && parsedVatAmount > 0) {
+        vatPaid = parsedVatAmount;
+      } else if (manualExpenses > 0) {
+        vatPaid = manualExpenses * (18 / 118);
+      }
+
+      const totalTax = incomeTax + capitalTax + vatPaid;
+
+      if (totalTax === 0) {
+        alert('נא להזין לפחות שדה אחד');
+        return;
+      }
+
+      // Display total
+      document.getElementById('totalTax').textContent = formatCurrency(totalTax);
+
+      // Tax breakdown
+      const breakdownEl = document.getElementById('taxBreakdown');
+      breakdownEl.innerHTML = '';
+      [
+        { label: 'מס הכנסה', amount: incomeTax },
+        { label: 'מס רווחי הון', amount: capitalTax },
+        { label: 'מע״מ (משוער)', amount: vatPaid },
+      ].filter(p => p.amount > 0).forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'tax-item';
+        div.innerHTML = `<div class="tax-label">${p.label}</div><div class="tax-amount">${formatCurrency(p.amount)}</div>`;
+        breakdownEl.appendChild(div);
+      });
+
+      // Budget cards
+      const grid = document.getElementById('budgetGrid');
+      grid.innerHTML = '';
+      const maxPct = Math.max(...budgetItems.map(b => b.pct));
+
+      budgetItems.forEach(item => {
+        const amount = totalTax * (item.pct / 100);
+        const monthly = amount / 12;
+        const barWidth = (item.pct / maxPct) * 100;
+
+        const card = document.createElement('div');
+        card.className = 'budget-card';
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-icon" style="background:${item.color}22">${item.icon}</div>
+            <div>
+              <div class="card-name">${item.name}</div>
+              <div class="card-pct">${item.pct.toFixed(1)}% מתקציב ${budgetYear} (${item.amountB} מיליארד ₪)</div>
+            </div>
+          </div>
+          <div class="card-amount" style="color:${item.color}">${formatCurrency(amount)}</div>
+          <div class="bar-bg">
+            <div class="bar-fill" style="width:${barWidth}%;background:${item.color}"></div>
+          </div>
+          <div class="monthly">${formatCurrency(monthly)} לחודש</div>
+        `;
+        grid.appendChild(card);
+      });
+
+      document.getElementById('results').classList.add('visible');
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>
