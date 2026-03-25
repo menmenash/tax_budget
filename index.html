@@ -621,7 +621,7 @@
     // Per: https://github.com/OpenBudget/BudgetKey
     const MIN_VALID_BUDGET_NIS = 100e9;
 
-    const CACHE_VERSION = 6; // Increment to invalidate old cached data
+    const CACHE_VERSION = 7; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -684,53 +684,68 @@
 
     // ------------------------------------------
     // Strategy 1: SQL API query (structured JSON)
+    // Per: https://github.com/OpenBudget/BudgetKey/blob/master/documentation/UsingTheAPI.md
     // ------------------------------------------
     async function fetchViaApi(year) {
-      // Fetch all budget items for the year, then pick the right hierarchy in JS
-      const queries = [
-        // Strategy 1: Get items with short codes (ministry level)
-        `select code,title,net_revised,net_allocated from budget_items_data where year=${year} order by net_revised desc limit 200`,
+      const strategies = [
+        { name: 'budget_items_data', sql: `select code,title,net_revised,net_allocated from budget_items_data where year=${year} order by net_revised desc` },
+        { name: 'budget depth=2', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 order by net_revised desc` },
+        { name: 'budget depth=1', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=1 order by net_revised desc` },
       ];
 
-      for (const sql of queries) {
+      for (const strat of strategies) {
         try {
-          const url = `${OBUDGET_API}?query=${encodeURIComponent(sql)}&page_size=200`;
+          const url = `${OBUDGET_API}?query=${encodeURIComponent(strat.sql)}&page_size=300`;
+          console.log(`[budget] Trying ${strat.name}...`);
           const resp = await fetch(url);
-          if (!resp.ok) continue;
-          const json = await resp.json();
-          const rows = json.rows || json;
-          if (!Array.isArray(rows) || rows.length === 0) continue;
 
-          // Group rows by code length to find the ministry level
+          if (!resp.ok) {
+            console.warn(`[budget] ${strat.name}: HTTP ${resp.status}`);
+            continue;
+          }
+
+          const json = await resp.json();
+          const rows = json.rows || (Array.isArray(json) ? json : []);
+
+          if (!rows.length) {
+            console.warn(`[budget] ${strat.name}: 0 rows`);
+            continue;
+          }
+
+          console.log(`[budget] ${strat.name}: ${rows.length} rows`);
+          if (rows[0]) console.log(`[budget]   sample code: "${rows[0].code}", title: "${rows[0].title}"`);
+
+          // Group by code length to find the right hierarchy
           const byLength = {};
           rows.forEach(r => {
-            const code = (r.code || '').replace(/\./g, ''); // remove dots
+            const code = (r.code || '').replace(/\./g, '');
             const len = code.length;
             if (!byLength[len]) byLength[len] = [];
             byLength[len].push(r);
           });
 
-          console.log('[budget] Code lengths found:', Object.keys(byLength).map(l => `${l}:${byLength[l].length} items`).join(', '));
+          for (const [len, items] of Object.entries(byLength)) {
+            const total = items.reduce((s, r) => s + (r.net_revised || r.net_allocated || 0), 0);
+            console.log(`[budget]   len=${len}: ${items.length} items, ${(total/1e9).toFixed(1)}B`);
+          }
 
-          // Find the code length whose items sum to the largest total (= ministry level)
+          // Pick the code length with the biggest total
           let bestLen = null, bestTotal = 0;
           for (const [len, items] of Object.entries(byLength)) {
             const total = items.reduce((s, r) => s + (r.net_revised || r.net_allocated || 0), 0);
-            if (total > bestTotal) {
-              bestTotal = total;
-              bestLen = len;
-            }
+            if (total > bestTotal) { bestTotal = total; bestLen = len; }
           }
 
           if (bestLen && bestTotal >= MIN_VALID_BUDGET_NIS) {
             const data = parseApiResponse(byLength[bestLen], year);
             if (data) {
-              console.log(`[budget] Using code length=${bestLen}: ${data.totalB}B NIS, ${data.items.length} items`);
+              console.log(`[budget] SUCCESS: ${strat.name} len=${bestLen}: ${data.totalB}B NIS`);
               return data;
             }
           }
+          console.log(`[budget] ${strat.name}: best ${(bestTotal/1e9).toFixed(1)}B < ${MIN_VALID_BUDGET_NIS/1e9}B threshold`);
         } catch (e) {
-          console.warn('[budget] API query failed:', e.message);
+          console.warn(`[budget] ${strat.name} error:`, e.message);
         }
       }
       return null;
