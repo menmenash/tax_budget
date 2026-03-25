@@ -49,7 +49,7 @@ gcloud storage buckets create "gs://${BUCKET_NAME}" \
 echo "==> Configuring static website"
 gcloud storage buckets update "gs://${BUCKET_NAME}" \
   --web-main-page-suffix=index.html \
-  --web-not-found-page=index.html
+  --web-error-page=index.html
 
 echo "==> Making bucket publicly readable"
 gcloud storage buckets add-iam-policy-binding "gs://${BUCKET_NAME}" \
