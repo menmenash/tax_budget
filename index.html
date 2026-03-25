@@ -995,17 +995,29 @@
       return FOREIGN_KEYWORDS.some(kw => lower.includes(kw));
     }
 
-    // Credit card company names = purchases (VAT-liable)
-    const CARD_COMPANIES = ['isracard', 'ישראכרט', 'leumicard', 'לאומי קארד', 'max', 'מקס',
-      'discount', 'כאל', 'cal', 'visa', 'mastercard', 'אמריקן אקספרס', 'amex'];
+    // Credit card company names — only these are treated as purchases
+    const CARD_COMPANIES = [
+      'isracard', 'ישראכרט',
+      'leumicard', 'לאומי קארד', 'לאומיקארד',
+      'max', 'מקס',
+      'cal', 'כאל',
+      'visa', 'ויזה',
+      'mastercard', 'מאסטרקארד',
+      'amex', 'אמריקן אקספרס', 'american express',
+      'diners', 'דיינרס',
+    ];
 
     function isBankTransfer(text, method) {
-      const lower = (text + ' ' + method).toLowerCase();
-      // If the payment method is a known credit card company, it's a purchase — not a transfer
-      if (CARD_COMPANIES.some(cc => lower.includes(cc))) {
-        return false;
+      const methodLower = method.toLowerCase().trim();
+      // If we have a payment method column, use whitelist approach:
+      // Only credit card = purchase. Everything else = transfer/excluded.
+      if (methodLower) {
+        const isCard = CARD_COMPANIES.some(cc => methodLower.includes(cc));
+        if (isCard) return false;  // card purchase — not a transfer
+        return true;  // bank, bit, paybox, standing order, etc. — treat as transfer
       }
-      // Check for transfer keywords
+      // No method column: fall back to keyword detection in description
+      const lower = text.toLowerCase();
       return TRANSFER_KEYWORDS.some(kw => lower.includes(kw));
     }
 
