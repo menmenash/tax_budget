@@ -311,6 +311,96 @@
       margin-top: 1.5rem;
       line-height: 1.6;
     }
+
+    /* Budget structure button */
+    .btn-budget-info {
+      display: inline-block;
+      padding: 0.5rem 1.2rem;
+      font-size: 0.9rem;
+      border: 1px solid #475569;
+      border-radius: 10px;
+      background: transparent;
+      color: #93c5fd;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      margin-bottom: 1.5rem;
+    }
+
+    .btn-budget-info:hover {
+      background: rgba(96, 165, 250, 0.1);
+      border-color: #60a5fa;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.visible {
+      display: flex;
+    }
+
+    .modal {
+      background: #1e293b;
+      border-radius: 16px;
+      border: 1px solid #334155;
+      max-width: 700px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 2rem;
+    }
+
+    .modal h3 {
+      color: #93c5fd;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+
+    .modal-close {
+      float: left;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .modal-close:hover { color: #e2e8f0; }
+
+    .budget-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .budget-table th {
+      text-align: right;
+      padding: 0.5rem;
+      border-bottom: 2px solid #334155;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .budget-table td {
+      padding: 0.5rem;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .budget-table tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+
+    .budget-table .cat-icon { text-align: center; width: 2rem; }
+    .budget-table .cat-pct { color: #64748b; font-size: 0.8rem; direction: ltr; text-align: left; }
+    .budget-table .cat-amount { direction: ltr; text-align: left; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -333,16 +423,17 @@
           <input type="text" id="capitalTax" inputmode="numeric" placeholder="לדוגמה: 8,000">
         </div>
 
-        <!-- Raiseup file upload OR manual entry for VAT -->
+        <!-- Riseup file upload OR manual entry for VAT -->
         <div class="field full-width">
           <label>מע״מ ששילמת (18% מהוצאות בישראל)</label>
-          <span class="hint">העלה סיכום הוצאות מ-Raiseup (אקסל/CSV) - נחשב מע״מ רק על הוצאות בישראל החייבות במע״מ</span>
+          <span class="hint">העלה סיכום הוצאות מ-Riseup: הגדרות > הגדרות מינוי > הורדת התזרים לאקסל. נחשב מע״מ רק על הוצאות בישראל.</span>
 
           <div class="upload-area" id="uploadArea">
             <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.tsv">
             <div class="upload-icon">📎</div>
             <div class="upload-text">
-              <strong>לחץ כאן</strong> או גרור קובץ אקסל/CSV מ-Raiseup
+              <strong>לחץ כאן</strong> או גרור קובץ אקסל/CSV מ-Riseup<br>
+              <span style="font-size:0.75rem;color:#64748b">(באפליקציה: הגדרות > הגדרות מינוי > הורדת התזרים לאקסל)</span>
             </div>
             <div class="file-name" id="fileName"></div>
           </div>
@@ -373,7 +464,27 @@
         </div>
       </div>
 
-      <button class="btn-calc" onclick="calculate()">חשב את התרומה שלי לתקציב</button>
+      <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+        <button class="btn-calc" style="flex:1;min-width:200px" onclick="calculate()">חשב את התרומה שלי לתקציב</button>
+        <button class="btn-budget-info" onclick="showBudgetModal()">מבנה התקציב</button>
+      </div>
+    </div>
+
+    <!-- Budget Structure Modal -->
+    <div class="modal-overlay" id="budgetModal" onclick="if(event.target===this)closeBudgetModal()">
+      <div class="modal">
+        <button class="modal-close" onclick="closeBudgetModal()">&times;</button>
+        <h3 id="modalTitle">מבנה תקציב המדינה</h3>
+        <p style="color:#94a3b8;font-size:0.85rem;margin-bottom:1rem" id="modalSubtitle">חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים</p>
+        <table class="budget-table" id="budgetTable">
+          <thead><tr><th></th><th>סעיף</th><th>סכום</th><th>אחוז</th></tr></thead>
+          <tbody id="budgetTableBody"></tbody>
+          <tfoot id="budgetTableFoot"></tfoot>
+        </table>
+        <p style="color:#475569;font-size:0.75rem;margin-top:1rem;text-align:center">
+          מקור: <a href="https://next.obudget.org" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a>
+        </p>
+      </div>
     </div>
 
     <!-- Results -->
@@ -755,7 +866,7 @@
 
     // ==========================================
     // VAT-exempt and foreign transaction detection
-    // Used when parsing Raiseup CSV exports
+    // Used when parsing Riseup CSV exports
     // ==========================================
     const VAT_EXEMPT_KEYWORDS = [
       // Residential rent
@@ -812,8 +923,38 @@
 
     function parseAmount(val) {
       if (!val) return 0;
-      const cleaned = val.replace(/[^\d.\-]/g, '');
-      return Math.abs(parseFloat(cleaned)) || 0;
+      // Keep digits, dots, commas, minus
+      let s = val.replace(/[^\d,.\-]/g, '');
+      if (!s) return 0;
+
+      // Detect comma as decimal separator (Israeli/European format)
+      // "125,50" → decimal comma  |  "1,234" → thousands comma
+      // "1,234.56" → comma is thousands  |  "1.234,56" → dot is thousands
+      if (s.includes(',') && s.includes('.')) {
+        // Both present: last one is the decimal separator
+        const lastComma = s.lastIndexOf(',');
+        const lastDot = s.lastIndexOf('.');
+        if (lastComma > lastDot) {
+          // comma is decimal: "1.234,56"
+          s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+          // dot is decimal: "1,234.56"
+          s = s.replace(/,/g, '');
+        }
+      } else if (s.includes(',')) {
+        // Only commas: check if decimal or thousands
+        const match = s.match(/,(\d{1,2})$/);
+        if (match) {
+          // Comma followed by 1-2 digits at end → decimal separator
+          s = s.replace(/,(?=\d{1,2}$)/, '.').replace(/,/g, '');
+        } else {
+          // Comma followed by 3+ digits → thousands separator
+          s = s.replace(/,/g, '');
+        }
+      }
+      // dots only: parseFloat handles naturally
+
+      return Math.abs(parseFloat(s)) || 0;
     }
 
     function isVatExempt(text) {
@@ -832,6 +973,14 @@
       return FOREIGN_KEYWORDS.some(kw => lower.includes(kw));
     }
 
+    function extractYear(dateStr) {
+      if (!dateStr) return null;
+      // Try common date formats: "2025-01-15", "15/01/2025", "15.01.2025", "01/15/2025"
+      const match4 = dateStr.match(/\b(20\d{2})\b/);
+      if (match4) return parseInt(match4[1]);
+      return null;
+    }
+
     function processFile(text) {
       const { headers, rows } = parseCSV(text);
       if (!headers.length || !rows.length) {
@@ -839,21 +988,33 @@
         return;
       }
 
-      const amountCol = findColumn(headers, ['סכום', 'חיוב', 'amount', 'sum', 'total', 'סה"כ', 'שקל']);
+      const amountCol = findColumn(headers, ['סכום', 'חיוב', 'amount', 'chargedamount', 'sum', 'total', 'סה"כ', 'שקל']);
       const descCol = findColumn(headers, ['שם', 'תיאור', 'בית עסק', 'עסק', 'description', 'name', 'פירוט']);
       const catCol = findColumn(headers, ['קטגוריה', 'category', 'סוג', 'קבוצה']);
-      const curCol = findColumn(headers, ['מטבע', 'currency', 'cur']);
+      const curCol = findColumn(headers, ['מטבע', 'currency', 'originalcurrency', 'cur']);
+      const dateCol = findColumn(headers, ['תאריך', 'date', 'processeddate']);
 
       if (!amountCol) {
         alert('לא נמצאה עמודת סכום בקובץ.\nעמודות שנמצאו: ' + headers.join(', '));
         return;
       }
 
+      const targetYear = budgetYear || new Date().getFullYear();
       let totalExpenses = 0;
       let vatEligible = 0;
       let vatExcluded = 0;
+      let skippedYear = 0;
 
       rows.forEach(row => {
+        // Filter by year — only count expenses from the relevant year
+        if (dateCol && row[dateCol]) {
+          const rowYear = extractYear(row[dateCol]);
+          if (rowYear && rowYear !== targetYear) {
+            skippedYear++;
+            return;
+          }
+        }
+
         const amount = parseAmount(row[amountCol]);
         if (amount === 0) return;
 
@@ -877,6 +1038,13 @@
       document.getElementById('vatExcluded').textContent = formatCurrency(vatExcluded);
       document.getElementById('vatAmount').textContent = formatCurrency(vatAmount);
       document.getElementById('vatSummary').classList.add('visible');
+
+      if (skippedYear > 0) {
+        document.getElementById('vatSummary').insertAdjacentHTML('beforeend',
+          `<div class="vat-row" style="color:#f59e0b;margin-top:0.4rem;font-size:0.8rem">
+            דילגנו על ${skippedYear} שורות שלא משנת ${targetYear}
+          </div>`);
+      }
     }
 
     // File input events
@@ -1010,6 +1178,53 @@
       document.getElementById('results').classList.add('visible');
       document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
     }
+
+    // ==========================================
+    // Budget Structure Modal
+    // ==========================================
+    function showBudgetModal() {
+      const tbody = document.getElementById('budgetTableBody');
+      const tfoot = document.getElementById('budgetTableFoot');
+      tbody.innerHTML = '';
+      tfoot.innerHTML = '';
+
+      document.getElementById('modalTitle').textContent = `מבנה תקציב המדינה ${budgetYear}`;
+
+      const items = budgetItems.length > 0 ? budgetItems : FALLBACK_2025.items.map(i => {
+        const style = getCategoryStyle(i.name);
+        return { ...i, pct: (i.amountB / FALLBACK_2025.totalB) * 100, ...style };
+      });
+
+      let totalB = 0;
+      items.forEach(item => {
+        totalB += item.amountB;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="cat-icon">${item.icon}</td>
+          <td>${item.name}</td>
+          <td class="cat-amount">${item.amountB} מיליארד ₪</td>
+          <td class="cat-pct">${item.pct.toFixed(1)}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      tfoot.innerHTML = `<tr style="font-weight:700;border-top:2px solid #334155">
+        <td></td><td>סה״כ</td>
+        <td class="cat-amount">${Math.round(totalB * 10) / 10} מיליארד ₪</td>
+        <td class="cat-pct">100%</td>
+      </tr>`;
+
+      document.getElementById('budgetModal').classList.add('visible');
+    }
+
+    function closeBudgetModal() {
+      document.getElementById('budgetModal').classList.remove('visible');
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeBudgetModal();
+    });
   </script>
 </body>
 </html>
