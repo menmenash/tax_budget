@@ -406,7 +406,7 @@
 <body>
   <div class="container">
     <h1>לאן הולך הכסף שלך?</h1>
-    <p class="subtitle">גלה כמה מהמיסים שלך הולכים לכל סעיף בתקציב המדינה</p>
+    <p class="subtitle">גלה כמה מהמיסים שלך הולכים לכל סעיף בתקציב המדינה — <strong id="subtitleYear">טוען...</strong></p>
 
     <!-- Inputs -->
     <div class="input-section">
@@ -803,6 +803,9 @@
         };
       });
 
+      // Update subtitle with year
+      document.getElementById('subtitleYear').textContent = `שנת ${budgetYear}`;
+
       // Update source info in the page
       const sourceTextEl = document.getElementById('sourceText');
       const statusEl = document.getElementById('dataStatus');
@@ -821,9 +824,10 @@
     }
 
     async function initBudgetData() {
-      const year = new Date().getFullYear();
+      // Always use previous year — only then do we know full annual data
+      const year = new Date().getFullYear() - 1;
 
-      // 1. Check localStorage cache for this year
+      // 1. Check localStorage cache
       const cached = loadFromCache(year);
       if (cached) {
         console.log(`[budget] Using cached data for ${year}`);
@@ -831,7 +835,7 @@
         return;
       }
 
-      // 2. Try all fetch strategies for current year
+      // 2. Try all fetch strategies
       const fetched = await tryFetchBudget(year);
       if (fetched) {
         fetched.fetchedAt = new Date().toISOString();
@@ -840,19 +844,19 @@
         return;
       }
 
-      // 3. Try previous year (cache first, then fetch)
-      const prevCached = loadFromCache(year - 1);
-      if (prevCached) {
+      // 3. Try year before that
+      const olderCached = loadFromCache(year - 1);
+      if (olderCached) {
         console.log(`[budget] Using cached data for ${year - 1}`);
-        applyBudgetData(prevCached);
+        applyBudgetData(olderCached);
         return;
       }
 
-      const prevFetched = await tryFetchBudget(year - 1);
-      if (prevFetched) {
-        prevFetched.fetchedAt = new Date().toISOString();
-        saveToCache(year - 1, prevFetched);
-        applyBudgetData(prevFetched);
+      const olderFetched = await tryFetchBudget(year - 1);
+      if (olderFetched) {
+        olderFetched.fetchedAt = new Date().toISOString();
+        saveToCache(year - 1, olderFetched);
+        applyBudgetData(olderFetched);
         return;
       }
 
@@ -999,15 +1003,28 @@
         return;
       }
 
-      const targetYear = budgetYear || new Date().getFullYear();
+      // Detect the most common year in the file
+      const yearCounts = {};
+      if (dateCol) {
+        rows.forEach(row => {
+          const y = extractYear(row[dateCol]);
+          if (y) yearCounts[y] = (yearCounts[y] || 0) + 1;
+        });
+      }
+      const fileYears = Object.entries(yearCounts).sort((a, b) => b[1] - a[1]);
+      // Use budget year if it exists in the file; otherwise the most common year
+      const targetYear = fileYears.find(([y]) => +y === budgetYear)
+        ? budgetYear
+        : (fileYears.length > 0 ? +fileYears[0][0] : null);
+
       let totalExpenses = 0;
       let vatEligible = 0;
       let vatExcluded = 0;
       let skippedYear = 0;
 
       rows.forEach(row => {
-        // Filter by year — only count expenses from the relevant year
-        if (dateCol && row[dateCol]) {
+        // Filter by detected target year (skip other years)
+        if (targetYear && dateCol && row[dateCol]) {
           const rowYear = extractYear(row[dateCol]);
           if (rowYear && rowYear !== targetYear) {
             skippedYear++;
@@ -1039,11 +1056,17 @@
       document.getElementById('vatAmount').textContent = formatCurrency(vatAmount);
       document.getElementById('vatSummary').classList.add('visible');
 
+      // Show year info
+      let yearNote = '';
+      if (targetYear && targetYear !== budgetYear) {
+        yearNote = `הקובץ מכיל הוצאות משנת ${targetYear}. לחישוב מדויק יותר, העלה את הנתונים של שנת ${budgetYear}.`;
+      }
       if (skippedYear > 0) {
+        yearNote += (yearNote ? ' ' : '') + `דילגנו על ${skippedYear} שורות משנים אחרות.`;
+      }
+      if (yearNote) {
         document.getElementById('vatSummary').insertAdjacentHTML('beforeend',
-          `<div class="vat-row" style="color:#f59e0b;margin-top:0.4rem;font-size:0.8rem">
-            דילגנו על ${skippedYear} שורות שלא משנת ${targetYear}
-          </div>`);
+          `<div class="vat-row" style="color:#f59e0b;margin-top:0.4rem;font-size:0.8rem">${yearNote}</div>`);
       }
     }
 
