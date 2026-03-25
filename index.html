@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>לאן הולך הכסף שלך? - מחשבון תקציב המדינה</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #94a3b8;
+      margin-bottom: 2rem;
+      font-size: 1rem;
+    }
+
+    /* Input Section */
+    .input-section {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid #334155;
+    }
+
+    .input-section h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1.5rem;
+      color: #93c5fd;
+    }
+
+    .input-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 600px) {
+      .input-group { grid-template-columns: 1fr; }
+      h1 { font-size: 1.5rem; }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .field.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+    }
+
+    .field .hint {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .field input[type="text"] {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 1.1rem;
+      direction: ltr;
+      text-align: right;
+      transition: border-color 0.2s;
+    }
+
+    .field input[type="text"]:focus {
+      outline: none;
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+    }
+
+    /* File upload area */
+    .upload-area {
+      border: 2px dashed #475569;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .upload-area:hover, .upload-area.dragover {
+      border-color: #60a5fa;
+      background: rgba(96, 165, 250, 0.05);
+    }
+
+    .upload-area.has-file {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.05);
+    }
+
+    .upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .upload-text { color: #94a3b8; font-size: 0.9rem; }
+    .upload-text strong { color: #60a5fa; }
+    .file-name { color: #22c55e; font-weight: 600; margin-top: 0.5rem; }
+
+    /* VAT summary */
+    .vat-summary {
+      display: none;
+      background: #162032;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .vat-summary.visible { display: block; }
+
+    .vat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.3rem 0;
+      color: #94a3b8;
+    }
+
+    .vat-row.total {
+      border-top: 1px solid #334155;
+      margin-top: 0.3rem;
+      padding-top: 0.5rem;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .vat-row .excluded { color: #f87171; }
+    .vat-row .included { color: #4ade80; }
+
+    .or-divider {
+      text-align: center;
+      color: #475569;
+      margin: 0.75rem 0;
+      font-size: 0.85rem;
+    }
+
+    .btn-calc {
+      display: block;
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-calc:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+    }
+
+    /* Results */
+    .results-section { display: none; }
+    .results-section.visible { display: block; }
+
+    .total-banner {
+      background: linear-gradient(135deg, #1e3a5f, #312e81);
+      border-radius: 16px;
+      padding: 1.5rem 2rem;
+      text-align: center;
+      margin-bottom: 1rem;
+      border: 1px solid #4338ca;
+    }
+
+    .total-banner .label {
+      font-size: 1rem;
+      color: #a5b4fc;
+      margin-bottom: 0.25rem;
+    }
+
+    .total-banner .amount {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .tax-breakdown-banner {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+      padding: 0 1rem;
+    }
+
+    .tax-item { text-align: center; }
+    .tax-item .tax-label { font-size: 0.8rem; color: #64748b; }
+    .tax-item .tax-amount { font-size: 1rem; font-weight: 600; color: #cbd5e1; }
+
+    .budget-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .budget-grid { grid-template-columns: 1fr; }
+    }
+
+    .budget-card {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 1.25rem;
+      border: 1px solid #334155;
+      transition: transform 0.15s;
+    }
+
+    .budget-card:hover { transform: translateY(-3px); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card-icon {
+      font-size: 1.6rem;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .card-name { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; }
+    .card-pct { font-size: 0.8rem; color: #64748b; }
+    .card-amount { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+
+    .bar-bg {
+      height: 8px;
+      border-radius: 4px;
+      background: #0f172a;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.8s ease;
+    }
+
+    .monthly {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 0.4rem;
+    }
+
+    .source-info {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      margin-top: 2rem;
+      border: 1px solid #334155;
+      font-size: 0.82rem;
+      color: #64748b;
+      line-height: 1.7;
+    }
+
+    .source-info a { color: #60a5fa; text-decoration: none; }
+    .source-info a:hover { text-decoration: underline; }
+
+    .disclaimer {
+      text-align: center;
+      color: #475569;
+      font-size: 0.78rem;
+      margin-top: 1.5rem;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>לאן הולך הכסף שלך?</h1>
+    <p class="subtitle">גלה כמה מהמיסים שלך הולכים לכל סעיף בתקציב המדינה</p>
+
+    <!-- Inputs -->
+    <div class="input-section">
+      <h2>הזן את נתוני המיסים שלך</h2>
+      <div class="input-group">
+        <div class="field">
+          <label for="incomeTax">מס הכנסה שנתי</label>
+          <span class="hint">מתוך טופס 106 / שומה שנתית</span>
+          <input type="text" id="incomeTax" inputmode="numeric" placeholder="לדוגמה: 45,000">
+        </div>
+        <div class="field">
+          <label for="capitalTax">מס רווחי הון</label>
+          <span class="hint">מס על השקעות, דיבידנדים, נדל"ן וכו׳</span>
+          <input type="text" id="capitalTax" inputmode="numeric" placeholder="לדוגמה: 8,000">
+        </div>
+
+        <!-- Raiseup file upload OR manual entry for VAT -->
+        <div class="field full-width">
+          <label>מע״מ ששילמת (18% מהוצאות בישראל)</label>
+          <span class="hint">העלה סיכום הוצאות מ-Raiseup (אקסל/CSV) - נחשב מע״מ רק על הוצאות בישראל החייבות במע״מ</span>
+
+          <div class="upload-area" id="uploadArea">
+            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.tsv">
+            <div class="upload-icon">📎</div>
+            <div class="upload-text">
+              <strong>לחץ כאן</strong> או גרור קובץ אקסל/CSV מ-Raiseup
+            </div>
+            <div class="file-name" id="fileName"></div>
+          </div>
+
+          <div id="vatSummary" class="vat-summary">
+            <div class="vat-row">
+              <span>סך הוצאות בקובץ:</span>
+              <span id="totalExpenses">-</span>
+            </div>
+            <div class="vat-row">
+              <span>הוצאות בישראל חייבות במע״מ:</span>
+              <span class="included" id="vatEligible">-</span>
+            </div>
+            <div class="vat-row">
+              <span>הוצאות פטורות / חו״ל (לא נספרו):</span>
+              <span class="excluded" id="vatExcluded">-</span>
+            </div>
+            <div class="vat-row total">
+              <span>מע״מ ששילמת (משוער):</span>
+              <span id="vatAmount">-</span>
+            </div>
+          </div>
+
+          <div class="or-divider">- או הזן ידנית -</div>
+
+          <input type="text" id="manualExpenses" inputmode="numeric" placeholder="סך הוצאות שנתיות בישראל (כולל מע״מ)">
+          <span class="hint">אם אין לך קובץ — הזן סכום כולל של הוצאות. נחשב 18% מע״מ מתוכו.</span>
+        </div>
+      </div>
+
+      <button class="btn-calc" onclick="calculate()">חשב את התרומה שלי לתקציב</button>
+    </div>
+
+    <!-- Results -->
+    <div class="results-section" id="results">
+      <div class="total-banner">
+        <div class="label">סה״כ מיסים שנתיים (משוער)</div>
+        <div class="amount" id="totalTax"></div>
+      </div>
+
+      <div class="tax-breakdown-banner" id="taxBreakdown"></div>
+
+      <div class="budget-grid" id="budgetGrid"></div>
+
+      <div class="source-info">
+        <strong>מקור נתוני התקציב:</strong> תקציב המדינה שאושר לשנת 2025 (~756 מיליארד ש״ח ברוטו, כולל ~136 מיליארד החזר חובות).
+        מבוסס על נתוני
+        <a href="https://next.obudget.org/i/budget/00/2025" target="_blank" rel="noopener">מפתח התקציב</a>,
+        <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>
+        ו<a href="https://fs.knesset.gov.il/globaldocs/MMM/180b7347-20bd-ef11-a855-005056aa1f91/2_180b7347-20bd-ef11-a855-005056aa1f91_11_20782.pdf" target="_blank" rel="noopener">מרכז המחקר של הכנסת (PDF)</a>.
+      </div>
+
+      <p class="disclaimer">
+        * החישוב הוא הערכה בלבד ואינו מהווה ייעוץ מקצועי.
+        ביטוח לאומי ומס בריאות לא נכללים — הם מנוהלים על ידי המוסד לביטוח לאומי ולא במסגרת תקציב המדינה.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // Israel 2025 Government Budget Breakdown
+    // Sources:
+    //   - Knesset Research Center PDF (2025)
+    //   - next.obudget.org/i/budget/00/2025
+    //   - Times of Israel, Calcalist, Globes reporting
+    //
+    // Total gross budget: ~756B NIS
+    //   - Net spending cap: ~620B NIS
+    //   - Debt servicing: ~136B NIS
+    // ==========================================
+    const TOTAL_BUDGET_B = 756; // billions NIS (gross)
+
+    const budgetItems = [
+      // amountB = billions NIS, from approved 2025 budget
+      { name: "ביטחון והגנה",               amountB: 110,   icon: "🛡️", color: "#ef4444" },
+      { name: "החזר חובות וריבית",           amountB: 136,   icon: "🏦", color: "#8b5cf6" },
+      { name: "חינוך והשכלה גבוהה",          amountB: 92,    icon: "📚", color: "#f59e0b" },
+      { name: "ביטוח לאומי וקצבאות",         amountB: 61,    icon: "👵", color: "#f97316" },
+      { name: "בריאות",                      amountB: 59,    icon: "🏥", color: "#10b981" },
+      { name: "תשתיות ותחבורה",             amountB: 46.5,  icon: "🚆", color: "#06b6d4" },
+      { name: "רווחה ושירותים חברתיים",       amountB: 35,    icon: "🤝", color: "#ec4899" },
+      { name: "ביטחון פנים ומשטרה",          amountB: 25,    icon: "🚔", color: "#6366f1" },
+      { name: "פנסיה תקציבית",              amountB: 25,    icon: "💼", color: "#a855f7" },
+      { name: "שיכון ובינוי",                amountB: 18,    icon: "🏗️", color: "#0ea5e9" },
+      { name: "תרבות, ספורט ודת",            amountB: 8,     icon: "🎭", color: "#d946ef" },
+      { name: "עלייה וקליטה",               amountB: 7,     icon: "✈️", color: "#14b8a6" },
+      { name: "חקלאות וסביבה",              amountB: 7,     icon: "🌱", color: "#22c55e" },
+      { name: "מדע וטכנולוגיה",             amountB: 6,     icon: "🔬", color: "#0891b2" },
+      { name: "משפט ובתי משפט",             amountB: 5,     icon: "⚖️", color: "#64748b" },
+      { name: "משרדים אחרים ורזרבות",        amountB: 115.5, icon: "📊", color: "#475569" },
+    ];
+
+    // Calculate percentage from total gross budget
+    budgetItems.forEach(item => {
+      item.pct = (item.amountB / TOTAL_BUDGET_B) * 100;
+    });
+
+    // ==========================================
+    // VAT-exempt and foreign transaction detection
+    // Used when parsing Raiseup CSV exports
+    // ==========================================
+    const VAT_EXEMPT_KEYWORDS = [
+      // Residential rent
+      'שכר דירה', 'שכ"ד', 'שכד',
+      // Municipal taxes
+      'ארנונה', 'עירייה', 'מועצה מקומית',
+      // National insurance / health tax (not VAT)
+      'ביטוח לאומי', 'ביטוח בריאות', 'מס בריאות',
+      // Education
+      'שכר לימוד', 'גן ילדים', 'צהרון', 'מעון',
+      // Health funds
+      'קופת חולים', 'מכבי', 'כללית', 'מאוחדת', 'לאומית',
+      // Banking / finance
+      'עמלת בנק', 'עמלה', 'ריבית משכנתא', 'משכנתא',
+    ];
+
+    const FOREIGN_KEYWORDS = [
+      'amazon.com', 'aliexpress', 'ebay',
+      'netflix', 'spotify', 'apple.com', 'google play',
+      'paypal', 'booking.com', 'airbnb', 'uber',
+      'חו"ל', 'חול', 'foreign',
+    ];
+
+    // ==========================================
+    // CSV Parsing & File Upload
+    // ==========================================
+    let parsedVatAmount = null;
+
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/);
+      if (lines.length < 2) return { headers: [], rows: [] };
+
+      const delimiter = lines[0].includes('\t') ? '\t' : ',';
+      const headers = lines[0].split(delimiter).map(h => h.replace(/"/g, '').trim());
+      const rows = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(delimiter).map(v => v.replace(/"/g, '').trim());
+        if (values.length < 2) continue;
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+        rows.push(row);
+      }
+      return { headers, rows };
+    }
+
+    function findColumn(headers, keywords) {
+      for (const kw of keywords) {
+        const found = headers.find(h => h.toLowerCase().includes(kw));
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function parseAmount(val) {
+      if (!val) return 0;
+      const cleaned = val.replace(/[^\d.\-]/g, '');
+      return Math.abs(parseFloat(cleaned)) || 0;
+    }
+
+    function isVatExempt(text) {
+      const lower = text.toLowerCase();
+      return VAT_EXEMPT_KEYWORDS.some(kw => lower.includes(kw));
+    }
+
+    function isForeign(text, curVal) {
+      if (curVal) {
+        const cur = curVal.trim().toUpperCase();
+        if (cur && cur !== 'ILS' && cur !== 'שקל' && cur !== 'ש"ח' && cur !== '₪' && cur !== 'שח' && cur !== 'שקלים') {
+          return true;
+        }
+      }
+      const lower = text.toLowerCase();
+      return FOREIGN_KEYWORDS.some(kw => lower.includes(kw));
+    }
+
+    function processFile(text) {
+      const { headers, rows } = parseCSV(text);
+      if (!headers.length || !rows.length) {
+        alert('לא הצלחנו לקרוא את הקובץ. ודא שזהו קובץ CSV תקין.');
+        return;
+      }
+
+      const amountCol = findColumn(headers, ['סכום', 'חיוב', 'amount', 'sum', 'total', 'סה"כ', 'שקל']);
+      const descCol = findColumn(headers, ['שם', 'תיאור', 'בית עסק', 'עסק', 'description', 'name', 'פירוט']);
+      const catCol = findColumn(headers, ['קטגוריה', 'category', 'סוג', 'קבוצה']);
+      const curCol = findColumn(headers, ['מטבע', 'currency', 'cur']);
+
+      if (!amountCol) {
+        alert('לא נמצאה עמודת סכום בקובץ.\nעמודות שנמצאו: ' + headers.join(', '));
+        return;
+      }
+
+      let totalExpenses = 0;
+      let vatEligible = 0;
+      let vatExcluded = 0;
+
+      rows.forEach(row => {
+        const amount = parseAmount(row[amountCol]);
+        if (amount === 0) return;
+
+        totalExpenses += amount;
+        const text = (descCol ? row[descCol] : '') + ' ' + (catCol ? row[catCol] : '');
+        const curVal = curCol ? row[curCol] : '';
+
+        if (isForeign(text, curVal) || isVatExempt(text)) {
+          vatExcluded += amount;
+        } else {
+          vatEligible += amount;
+        }
+      });
+
+      // VAT is included in Israeli prices: VAT = price * 18/118
+      const vatAmount = vatEligible * (18 / 118);
+      parsedVatAmount = vatAmount;
+
+      document.getElementById('totalExpenses').textContent = formatCurrency(totalExpenses);
+      document.getElementById('vatEligible').textContent = formatCurrency(vatEligible);
+      document.getElementById('vatExcluded').textContent = formatCurrency(vatExcluded);
+      document.getElementById('vatAmount').textContent = formatCurrency(vatAmount);
+      document.getElementById('vatSummary').classList.add('visible');
+    }
+
+    // File input events
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+
+    fileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('fileName').textContent = file.name;
+      uploadArea.classList.add('has-file');
+
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        processFile(ev.target.result);
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
+
+    uploadArea.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      this.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', function() {
+      this.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+      e.preventDefault();
+      this.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change'));
+      }
+    });
+
+    // ==========================================
+    // Main Calculation
+    // ==========================================
+    function parseNum(str) {
+      return parseFloat(str.replace(/[^\d.]/g, '')) || 0;
+    }
+
+    function formatCurrency(n) {
+      return '₪' + Math.round(n).toLocaleString('he-IL');
+    }
+
+    // Auto-format numbers with commas while typing
+    document.querySelectorAll('input[type="text"]').forEach(input => {
+      input.addEventListener('input', function() {
+        const raw = this.value.replace(/[^\d]/g, '');
+        if (raw) {
+          this.value = parseInt(raw).toLocaleString('he-IL');
+        }
+      });
+    });
+
+    function calculate() {
+      const incomeTax = parseNum(document.getElementById('incomeTax').value);
+      const capitalTax = parseNum(document.getElementById('capitalTax').value);
+      const manualExpenses = parseNum(document.getElementById('manualExpenses').value);
+
+      // VAT: prefer parsed file data, fallback to manual entry
+      let vatPaid = 0;
+      if (parsedVatAmount !== null && parsedVatAmount > 0) {
+        vatPaid = parsedVatAmount;
+      } else if (manualExpenses > 0) {
+        vatPaid = manualExpenses * (18 / 118);
+      }
+
+      const totalTax = incomeTax + capitalTax + vatPaid;
+
+      if (totalTax === 0) {
+        alert('נא להזין לפחות שדה אחד');
+        return;
+      }
+
+      // Display total
+      document.getElementById('totalTax').textContent = formatCurrency(totalTax);
+
+      // Tax breakdown
+      const breakdownEl = document.getElementById('taxBreakdown');
+      breakdownEl.innerHTML = '';
+      [
+        { label: 'מס הכנסה', amount: incomeTax },
+        { label: 'מס רווחי הון', amount: capitalTax },
+        { label: 'מע״מ (משוער)', amount: vatPaid },
+      ].filter(p => p.amount > 0).forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'tax-item';
+        div.innerHTML = `<div class="tax-label">${p.label}</div><div class="tax-amount">${formatCurrency(p.amount)}</div>`;
+        breakdownEl.appendChild(div);
+      });
+
+      // Budget cards
+      const grid = document.getElementById('budgetGrid');
+      grid.innerHTML = '';
+      const maxPct = Math.max(...budgetItems.map(b => b.pct));
+
+      budgetItems.forEach(item => {
+        const amount = totalTax * (item.pct / 100);
+        const monthly = amount / 12;
+        const barWidth = (item.pct / maxPct) * 100;
+
+        const card = document.createElement('div');
+        card.className = 'budget-card';
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-icon" style="background:${item.color}22">${item.icon}</div>
+            <div>
+              <div class="card-name">${item.name}</div>
+              <div class="card-pct">${item.pct.toFixed(1)}% מהתקציב (${item.amountB} מיליארד ₪)</div>
+            </div>
+          </div>
+          <div class="card-amount" style="color:${item.color}">${formatCurrency(amount)}</div>
+          <div class="bar-bg">
+            <div class="bar-fill" style="width:${barWidth}%;background:${item.color}"></div>
+          </div>
+          <div class="monthly">${formatCurrency(monthly)} לחודש</div>
+        `;
+        grid.appendChild(card);
+      });
+
+      document.getElementById('results').classList.add('visible');
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>
