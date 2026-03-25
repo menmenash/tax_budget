@@ -588,13 +588,18 @@
     // ==========================================
     const OBUDGET_API = 'https://next.obudget.org/api/query';
 
-    function buildBudgetQuery(year) {
-      const sql = `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 order by net_revised desc`;
+    function buildBudgetQuery(year, depth) {
+      const sql = `select code,title,net_revised,net_allocated from budget where year=${year} and depth=${depth} order by net_revised desc`;
       return `${OBUDGET_API}?query=${encodeURIComponent(sql)}&page_size=80`;
     }
 
+    // Minimum total budget to consider valid (100B NIS = clearly a national budget, not a sub-ministry)
+    const MIN_VALID_BUDGET_NIS = 100e9;
+
+    const CACHE_VERSION = 2; // Increment to invalidate old cached data
+
     function getCacheKey(year) {
-      return `tax_budget_cache_${year}`;
+      return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
     }
 
     function loadFromCache(year) {
@@ -603,6 +608,8 @@
         if (!raw) return null;
         const cached = JSON.parse(raw);
         if (cached && cached.year === year && cached.items && cached.items.length > 0) {
+          // Validate cached data is a real national budget (not a sub-ministry)
+          if (cached.totalNIS && cached.totalNIS < MIN_VALID_BUDGET_NIS) return null;
           return cached;
         }
       } catch (e) { /* ignore */ }
@@ -642,6 +649,7 @@
 
       return {
         year,
+        totalNIS,
         totalB: Math.round(totalNIS / 1e9 * 10) / 10,
         items,
         source: 'obudget',
@@ -653,10 +661,23 @@
     // Strategy 1: SQL API query (structured JSON)
     // ------------------------------------------
     async function fetchViaApi(year) {
-      const resp = await fetch(buildBudgetQuery(year));
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const json = await resp.json();
-      return parseApiResponse(json, year);
+      // Try depth=1 first (ministry level), then depth=2 as fallback
+      for (const depth of [1, 2, 3]) {
+        try {
+          const resp = await fetch(buildBudgetQuery(year, depth));
+          if (!resp.ok) continue;
+          const json = await resp.json();
+          const data = parseApiResponse(json, year);
+          if (data && data.totalNIS >= MIN_VALID_BUDGET_NIS) {
+            console.log(`[budget] API depth=${depth} returned valid data: ${data.totalB}B NIS`);
+            return data;
+          }
+          console.log(`[budget] API depth=${depth} total too low (${data?.totalB}B), trying next depth`);
+        } catch (e) {
+          console.warn(`[budget] API depth=${depth} failed:`, e.message);
+        }
+      }
+      return null;
     }
 
     // ------------------------------------------
@@ -877,16 +898,17 @@
       'שכר דירה', 'שכ"ד', 'שכד', 'שכירות', 'דמי שכירות', 'rent',
       // Loans & mortgage
       'משכנתא', 'משכנתה', 'הלוואה', 'החזר הלוואה', 'הלוואת', 'ריבית משכנתא',
-      // Municipal taxes
-      'ארנונה', 'עירייה', 'מועצה מקומית', 'מועצה אזורית',
+      // Municipal taxes (עיריי covers both עירייה and עיריית)
+      'ארנונה', 'עיריי', 'מועצה מקומית', 'מועצה אזורית', 'רשות מקומית',
       // National insurance / health tax
       'ביטוח לאומי', 'ביטוח בריאות', 'מס בריאות',
       // Insurance — generic + specific companies (premiums are VAT-exempt)
       'ביטוח', 'פוליס',
       'הפניקס', 'מגדל', 'הראל', 'כלל ביטוח', 'מנורה', 'ליברה', 'איילון',
       'שירביט', 'אליהו', 'clal', 'phoenix', 'migdal', 'harel',
-      // Education
-      'שכר לימוד', 'גן ילדים', 'צהרון', 'מעון', 'אוניברסיט', 'מכללה',
+      // Education & culture
+      'חינוך', 'שכר לימוד', 'גן ילדים', 'צהרון', 'מעון', 'אוניברסיט', 'מכללה',
+      'תרבות', 'מוסדות חינוך',
       // Health funds
       'קופת חולים', 'מכבי', 'כללית', 'מאוחדת', 'לאומית',
       // Banking / finance
