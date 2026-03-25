@@ -588,17 +588,18 @@
     // ==========================================
     const OBUDGET_API = 'https://next.obudget.org/api/query';
 
-    function buildBudgetQuery(year, level) {
-      // Table: budget_items_data, field: level (not depth)
-      // Per: https://github.com/OpenBudget/BudgetKey/blob/master/documentation/UsingTheAPI.md
-      const sql = `select code,title,net_revised,net_allocated from budget_items_data where year=${year} and level=${level} order by net_revised desc`;
+    // Budget code lengths: 2=ministry, 4=dept, 6=sub-dept, 8=line item
+    // Per: https://github.com/OpenBudget/BudgetKey
+    // "upper hierarchies (2, 4 & 6 digits) are plain aggregations of the 8-digit items"
+    function buildBudgetQuery(year, codeLen) {
+      const sql = `select code,title,net_revised,net_allocated from budget_items_data where year=${year} and length(code)=${codeLen} order by net_revised desc`;
       return `${OBUDGET_API}?query=${encodeURIComponent(sql)}&page_size=80`;
     }
 
-    // Minimum total budget to consider valid (100B NIS = clearly a national budget, not a sub-ministry)
+    // Minimum total budget to consider valid (100B NIS)
     const MIN_VALID_BUDGET_NIS = 100e9;
 
-    const CACHE_VERSION = 3; // Increment to invalidate old cached data
+    const CACHE_VERSION = 4; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -663,21 +664,20 @@
     // Strategy 1: SQL API query (structured JSON)
     // ------------------------------------------
     async function fetchViaApi(year) {
-      // Try different hierarchy levels to find ministry-level data
-      // Budget codes: XX=ministry (level 2), XXXX=dept (level 4), etc.
-      for (const level of [2, 1, 3, 4]) {
+      // Try code length=2 first (ministry level), then 4 (department)
+      for (const codeLen of [2, 4]) {
         try {
-          const resp = await fetch(buildBudgetQuery(year, level));
+          const resp = await fetch(buildBudgetQuery(year, codeLen));
           if (!resp.ok) continue;
           const json = await resp.json();
           const data = parseApiResponse(json, year);
           if (data && data.totalNIS >= MIN_VALID_BUDGET_NIS) {
-            console.log(`[budget] API level=${level} returned valid data: ${data.totalB}B NIS, ${data.items.length} items`);
+            console.log(`[budget] API code length=${codeLen} → ${data.totalB}B NIS, ${data.items.length} items`);
             return data;
           }
-          console.log(`[budget] API level=${level} total too low (${data?.totalB}B), trying next`);
+          console.log(`[budget] API code length=${codeLen} total too low (${data?.totalB}B), trying next`);
         } catch (e) {
-          console.warn(`[budget] API level=${level} failed:`, e.message);
+          console.warn(`[budget] API code length=${codeLen} failed:`, e.message);
         }
       }
       return null;
