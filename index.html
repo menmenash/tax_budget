@@ -873,18 +873,30 @@
     // Used when parsing Riseup CSV exports
     // ==========================================
     const VAT_EXEMPT_KEYWORDS = [
-      // Residential rent
-      'שכר דירה', 'שכ"ד', 'שכד',
+      // Rent / housing
+      'שכר דירה', 'שכ"ד', 'שכד', 'שכירות', 'דמי שכירות', 'rent',
+      // Loans & mortgage
+      'משכנתא', 'משכנתה', 'הלוואה', 'החזר הלוואה', 'הלוואת', 'ריבית משכנתא',
       // Municipal taxes
-      'ארנונה', 'עירייה', 'מועצה מקומית',
-      // National insurance / health tax (not VAT)
+      'ארנונה', 'עירייה', 'מועצה מקומית', 'מועצה אזורית',
+      // National insurance / health tax
       'ביטוח לאומי', 'ביטוח בריאות', 'מס בריאות',
+      // Insurance (premiums are VAT-exempt)
+      'פוליסת ביטוח', 'ביטוח דירה', 'ביטוח רכב', 'ביטוח חיים', 'ביטוח מנהלים',
+      'הפניקס', 'מגדל ביטוח', 'הראל ביטוח', 'כלל ביטוח', 'מנורה',
       // Education
-      'שכר לימוד', 'גן ילדים', 'צהרון', 'מעון',
+      'שכר לימוד', 'גן ילדים', 'צהרון', 'מעון', 'אוניברסיט', 'מכללה',
       // Health funds
       'קופת חולים', 'מכבי', 'כללית', 'מאוחדת', 'לאומית',
       // Banking / finance
-      'עמלת בנק', 'עמלה', 'ריבית משכנתא', 'משכנתא',
+      'עמלת בנק', 'עמלה', 'דמי ניהול', 'ריבית',
+      // Transfers between accounts (not purchases)
+      'העברה', 'העברת', 'הפקדה', 'הפקדת',
+      // Savings & investments (not purchases)
+      'חיסכון', 'קרן השתלמות', 'קופת גמל', 'פנסיה', 'קרן פנסיה',
+      'השקעה', 'ני"ע', 'ניירות ערך',
+      // Taxes & government fees
+      'מס הכנסה', 'מע"מ', 'אגרה', 'אגרת',
     ];
 
     const FOREIGN_KEYWORDS = [
@@ -892,6 +904,12 @@
       'netflix', 'spotify', 'apple.com', 'google play',
       'paypal', 'booking.com', 'airbnb', 'uber',
       'חו"ל', 'חול', 'foreign',
+    ];
+
+    // Bank transfer patterns — excluded unless clearly a purchase
+    const TRANSFER_KEYWORDS = [
+      'העברה', 'העברת', 'הפקדה', 'הפקדת', 'הוראת קבע',
+      'הו"ק', 'הוק', 'משיכת', 'transfer',
     ];
 
     // ==========================================
@@ -977,6 +995,20 @@
       return FOREIGN_KEYWORDS.some(kw => lower.includes(kw));
     }
 
+    // Credit card company names = purchases (VAT-liable)
+    const CARD_COMPANIES = ['isracard', 'ישראכרט', 'leumicard', 'לאומי קארד', 'max', 'מקס',
+      'discount', 'כאל', 'cal', 'visa', 'mastercard', 'אמריקן אקספרס', 'amex'];
+
+    function isBankTransfer(text, method) {
+      const lower = (text + ' ' + method).toLowerCase();
+      // If the payment method is a known credit card company, it's a purchase — not a transfer
+      if (CARD_COMPANIES.some(cc => lower.includes(cc))) {
+        return false;
+      }
+      // Check for transfer keywords
+      return TRANSFER_KEYWORDS.some(kw => lower.includes(kw));
+    }
+
     function extractYear(dateStr) {
       if (!dateStr) return null;
       // Try common date formats: "2025-01-15", "15/01/2025", "15.01.2025", "01/15/2025"
@@ -997,6 +1029,7 @@
       const catCol = findColumn(headers, ['קטגוריה', 'category', 'סוג', 'קבוצה']);
       const curCol = findColumn(headers, ['מטבע', 'currency', 'originalcurrency', 'cur']);
       const dateCol = findColumn(headers, ['תאריך', 'date', 'processeddate']);
+      const methodCol = findColumn(headers, ['אמצעי', 'סוג תנועה', 'method', 'channel']);
 
       if (!amountCol) {
         alert('לא נמצאה עמודת סכום בקובץ.\nעמודות שנמצאו: ' + headers.join(', '));
@@ -1035,7 +1068,9 @@
         const curVal = curCol ? row[curCol] : '';
 
         // 4. Only count Israeli, VAT-liable expenses
-        if (isForeign(text, curVal) || isVatExempt(text)) {
+        // Exclude: foreign, VAT-exempt, and bank transfers
+        const method = methodCol ? (row[methodCol] || '') : '';
+        if (isForeign(text, curVal) || isVatExempt(text) || isBankTransfer(text, method)) {
           vatExcluded += amount;
         } else {
           vatEligible += amount;
