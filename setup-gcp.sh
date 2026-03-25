@@ -43,8 +43,7 @@ echo "==> Creating bucket gs://${BUCKET_NAME} in ${REGION}"
 gcloud storage buckets create "gs://${BUCKET_NAME}" \
   --location="${REGION}" \
   --uniform-bucket-level-access \
-  --public-access-prevention=inherited \
-  2>/dev/null || echo "    Bucket already exists, skipping."
+  || echo "    Bucket already exists or creation failed, continuing..."
 
 echo "==> Configuring static website"
 gcloud storage buckets update "gs://${BUCKET_NAME}" \
@@ -89,10 +88,15 @@ WORKLOAD_IDENTITY_PROVIDER=$(gcloud iam workload-identity-pools providers descri
   --workload-identity-pool="${POOL_NAME}" \
   --format="value(name)")
 
+# Extract the pool path (without /providers/...) for the SA binding
+POOL_PATH=$(gcloud iam workload-identity-pools describe "${POOL_NAME}" \
+  --location="global" \
+  --format="value(name)")
+
 echo "==> Allowing GitHub Actions to impersonate the SA"
 gcloud iam service-accounts add-iam-policy-binding "${SA_EMAIL}" \
   --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/${WORKLOAD_IDENTITY_PROVIDER}/attribute.repository/${GITHUB_REPO}"
+  --member="principalSet://iam.googleapis.com/${POOL_PATH}/attribute.repository/${GITHUB_REPO}"
 
 # ---- Print results ----
 BUCKET_URL="https://storage.googleapis.com/${BUCKET_NAME}/index.html"
