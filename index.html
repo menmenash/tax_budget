@@ -593,7 +593,7 @@
     // Per: https://github.com/OpenBudget/BudgetKey
     const MIN_VALID_BUDGET_NIS = 100e9;
 
-    const CACHE_VERSION = 5; // Increment to invalidate old cached data
+    const CACHE_VERSION = 6; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -874,7 +874,6 @@
     }
 
     async function initBudgetData() {
-      // Always use previous year — only then do we know full annual data
       const year = new Date().getFullYear() - 1;
 
       // 1. Check localStorage cache
@@ -885,28 +884,28 @@
         return;
       }
 
-      // 2. Try all fetch strategies
+      // 2. Try loading pre-fetched JSON (created by GitHub Actions, no CORS issue)
+      try {
+        const jsonResp = await fetch('budget-data.json');
+        if (jsonResp.ok) {
+          const data = await jsonResp.json();
+          if (data && data.items && data.items.length > 0 && data.totalNIS >= MIN_VALID_BUDGET_NIS) {
+            console.log(`[budget] Loaded pre-fetched data: ${data.totalB}B NIS, ${data.items.length} items`);
+            saveToCache(data.year, data);
+            applyBudgetData(data);
+            return;
+          }
+        }
+      } catch (e) {
+        console.log('[budget] No pre-fetched budget-data.json');
+      }
+
+      // 3. Try obudget.org API directly (works if CORS is allowed)
       const fetched = await tryFetchBudget(year);
       if (fetched) {
         fetched.fetchedAt = new Date().toISOString();
         saveToCache(year, fetched);
         applyBudgetData(fetched);
-        return;
-      }
-
-      // 3. Try year before that
-      const olderCached = loadFromCache(year - 1);
-      if (olderCached) {
-        console.log(`[budget] Using cached data for ${year - 1}`);
-        applyBudgetData(olderCached);
-        return;
-      }
-
-      const olderFetched = await tryFetchBudget(year - 1);
-      if (olderFetched) {
-        olderFetched.fetchedAt = new Date().toISOString();
-        saveToCache(year - 1, olderFetched);
-        applyBudgetData(olderFetched);
         return;
       }
 
