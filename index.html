@@ -588,18 +588,12 @@
     // ==========================================
     const OBUDGET_API = 'https://next.obudget.org/api/query';
 
-    // Budget code lengths: 2=ministry, 4=dept, 6=sub-dept, 8=line item
+    // Budget codes: 2-digit = ministry, 4-digit = dept, etc.
+    // We fetch all items and pick the right level in JS
     // Per: https://github.com/OpenBudget/BudgetKey
-    // "upper hierarchies (2, 4 & 6 digits) are plain aggregations of the 8-digit items"
-    function buildBudgetQuery(year, codeLen) {
-      const sql = `select code,title,net_revised,net_allocated from budget_items_data where year=${year} and length(code)=${codeLen} order by net_revised desc`;
-      return `${OBUDGET_API}?query=${encodeURIComponent(sql)}&page_size=80`;
-    }
-
-    // Minimum total budget to consider valid (100B NIS)
     const MIN_VALID_BUDGET_NIS = 100e9;
 
-    const CACHE_VERSION = 4; // Increment to invalidate old cached data
+    const CACHE_VERSION = 5; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -664,20 +658,51 @@
     // Strategy 1: SQL API query (structured JSON)
     // ------------------------------------------
     async function fetchViaApi(year) {
-      // Try code length=2 first (ministry level), then 4 (department)
-      for (const codeLen of [2, 4]) {
+      // Fetch all budget items for the year, then pick the right hierarchy in JS
+      const queries = [
+        // Strategy 1: Get items with short codes (ministry level)
+        `select code,title,net_revised,net_allocated from budget_items_data where year=${year} order by net_revised desc limit 200`,
+      ];
+
+      for (const sql of queries) {
         try {
-          const resp = await fetch(buildBudgetQuery(year, codeLen));
+          const url = `${OBUDGET_API}?query=${encodeURIComponent(sql)}&page_size=200`;
+          const resp = await fetch(url);
           if (!resp.ok) continue;
           const json = await resp.json();
-          const data = parseApiResponse(json, year);
-          if (data && data.totalNIS >= MIN_VALID_BUDGET_NIS) {
-            console.log(`[budget] API code length=${codeLen} → ${data.totalB}B NIS, ${data.items.length} items`);
-            return data;
+          const rows = json.rows || json;
+          if (!Array.isArray(rows) || rows.length === 0) continue;
+
+          // Group rows by code length to find the ministry level
+          const byLength = {};
+          rows.forEach(r => {
+            const code = (r.code || '').replace(/\./g, ''); // remove dots
+            const len = code.length;
+            if (!byLength[len]) byLength[len] = [];
+            byLength[len].push(r);
+          });
+
+          console.log('[budget] Code lengths found:', Object.keys(byLength).map(l => `${l}:${byLength[l].length} items`).join(', '));
+
+          // Find the code length whose items sum to the largest total (= ministry level)
+          let bestLen = null, bestTotal = 0;
+          for (const [len, items] of Object.entries(byLength)) {
+            const total = items.reduce((s, r) => s + (r.net_revised || r.net_allocated || 0), 0);
+            if (total > bestTotal) {
+              bestTotal = total;
+              bestLen = len;
+            }
           }
-          console.log(`[budget] API code length=${codeLen} total too low (${data?.totalB}B), trying next`);
+
+          if (bestLen && bestTotal >= MIN_VALID_BUDGET_NIS) {
+            const data = parseApiResponse(byLength[bestLen], year);
+            if (data) {
+              console.log(`[budget] Using code length=${bestLen}: ${data.totalB}B NIS, ${data.items.length} items`);
+              return data;
+            }
+          }
         } catch (e) {
-          console.warn(`[budget] API code length=${codeLen} failed:`, e.message);
+          console.warn('[budget] API query failed:', e.message);
         }
       }
       return null;
