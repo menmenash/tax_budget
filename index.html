@@ -382,26 +382,31 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 0.85rem;
+      direction: rtl;
     }
 
     .budget-table th {
       text-align: right;
-      padding: 0.5rem;
+      padding: 0.4rem 0.5rem;
       border-bottom: 2px solid #334155;
       color: #94a3b8;
       font-weight: 600;
+      white-space: nowrap;
     }
 
     .budget-table td {
-      padding: 0.5rem;
+      padding: 0.35rem 0.5rem;
       border-bottom: 1px solid #1e293b;
+      white-space: nowrap;
     }
 
     .budget-table tr:nth-child(even) { background: rgba(255,255,255,0.02); }
 
-    .budget-table .cat-icon { text-align: center; width: 2rem; }
-    .budget-table .cat-pct { color: #64748b; font-size: 0.8rem; direction: ltr; text-align: left; }
-    .budget-table .cat-amount { direction: ltr; text-align: left; font-weight: 600; }
+    .budget-table .cat-icon { text-align: center; width: 1.8rem; padding-left: 0; }
+    .budget-table .cat-name { text-align: right; }
+    .budget-table .cat-amount { text-align: right; font-weight: 600; }
+    .budget-table .cat-pct { color: #64748b; font-size: 0.8rem; text-align: left; direction: ltr; width: 3.5rem; }
+    .budget-table tr.supp-row { background: rgba(96,165,250,0.06); }
   </style>
 </head>
 <body>
@@ -594,6 +599,37 @@
     // All figures in billions of NIS (net expenditure including debt repayment)
     // ==========================================
 
+    // 2021: COVID recovery year. Budget approved after 3 years without one.
+    // Net budget ~498B including debt. First budget since 2019.
+    // Sources: Knesset, Bank of Israel
+    const FALLBACK_2021 = {
+      year: 2021,
+      totalB: 498,
+      items: [
+        { name: "החזר חובות וריבית",             amountB: 82 },
+        { name: "חינוך והשכלה גבוהה",              amountB: 66 },
+        { name: "ביטחון והגנה",                   amountB: 62 },
+        { name: "ביטוח לאומי וקצבאות",             amountB: 48 },
+        { name: "בריאות",                          amountB: 43 },
+        { name: "תשתיות ותחבורה",                 amountB: 32 },
+        { name: "רווחה ושירותים חברתיים",           amountB: 26 },
+        { name: "פנסיה תקציבית",                  amountB: 25 },
+        { name: "ביטחון פנים ומשטרה",              amountB: 17 },
+        { name: "שיכון ובינוי",                    amountB: 10 },
+        { name: "כלכלה ותעשייה",                   amountB: 10, est: true },
+        { name: "משרד האוצר",                     amountB: 8, est: true },
+        { name: "תרבות, ספורט ודת",                amountB: 6.5 },
+        { name: "חוץ ודיפלומטיה",                  amountB: 6, est: true },
+        { name: "חקלאות וסביבה",                  amountB: 5.5 },
+        { name: "עלייה וקליטה",                   amountB: 5.5 },
+        { name: "מדע וטכנולוגיה",                 amountB: 5 },
+        { name: "אנרגיה ומים",                    amountB: 4.5, est: true },
+        { name: "משפט ובתי משפט",                 amountB: 4 },
+        { name: "משרדים אחרים ורזרבות",            amountB: 32 },
+      ],
+      source: 'fallback',
+    };
+
     // 2022: Pre-war year. Budget surplus of 9.8B NIS (0.6% GDP).
     // Net budget proposal ~541B including debt. Actual expenditure ~459B + debt ~88B.
     // Sources: Knesset budget docs, Calcalist, Bank of Israel
@@ -633,14 +669,15 @@
       year: 2023,
       totalB: 584,
       items: [
-        { name: "ביטחון והגנה",                   amountB: 98 },
         { name: "החזר חובות וריבית",             amountB: 95 },
         { name: "חינוך והשכלה גבוהה",              amountB: 80 },
+        { name: "ביטחון והגנה",                   amountB: 72 },
         { name: "ביטוח לאומי וקצבאות",             amountB: 58 },
         { name: "בריאות",                          amountB: 48 },
         { name: "תשתיות ותחבורה",                 amountB: 38 },
         { name: "רווחה ושירותים חברתיים",           amountB: 30 },
         { name: "פנסיה תקציבית",                  amountB: 28 },
+        { name: "תוספת תקציבית — ביטחון (חרבות ברזל)", amountB: 26, supp: true },
         { name: "ביטחון פנים ומשטרה",              amountB: 22 },
         { name: "שיכון ובינוי",                    amountB: 12 },
         { name: "כלכלה ותעשייה",                   amountB: 10, est: true },
@@ -665,9 +702,10 @@
       year: 2024,
       totalB: 670,
       items: [
-        { name: "ביטחון והגנה",                   amountB: 152 },
         { name: "החזר חובות וריבית",             amountB: 110 },
         { name: "חינוך והשכלה גבוהה",              amountB: 84 },
+        { name: "ביטחון והגנה",                   amountB: 75 },
+        { name: "תוספת תקציבית — ביטחון (חרבות ברזל)", amountB: 77, supp: true },
         { name: "ביטוח לאומי וקצבאות",             amountB: 61 },
         { name: "בריאות",                          amountB: 52 },
         { name: "תשתיות ותחבורה",                 amountB: 40 },
@@ -722,6 +760,7 @@
 
     // Lookup map for year-specific fallback data
     const FALLBACK_BY_YEAR = {
+      2021: FALLBACK_2021,
       2022: FALLBACK_2022,
       2023: FALLBACK_2023,
       2024: FALLBACK_2024,
@@ -747,7 +786,7 @@
     // length and pick the level with the largest total
     const MIN_VALID_BUDGET_NIS = 200e9; // Israel's budget is 400B+; reject anything under 200B as partial/supplementary
 
-    const CACHE_VERSION = 10; // Increment to invalidate old cached data
+    const CACHE_VERSION = 11; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -773,6 +812,9 @@
       } catch (e) { /* ignore quota errors */ }
     }
 
+    // Threshold for showing a supplement as a separate line (5B NIS)
+    const SUPP_THRESHOLD_NIS = 5e9;
+
     function parseApiResponse(json, year) {
       // The API returns { rows: [ { code, title, net_revised, net_allocated, ... }, ... ] }
       const rows = json.rows || json;
@@ -783,16 +825,34 @@
 
       for (const row of rows) {
         const title = row.title || '';
-        // net_revised is the latest approved amount; fallback to net_allocated
-        const amountNIS = row.net_revised || row.net_allocated || 0;
+        const revised = row.net_revised || 0;
+        const allocated = row.net_allocated || 0;
+        const amountNIS = revised || allocated;
         if (amountNIS <= 0) continue;
 
         totalNIS += amountNIS;
-        items.push({
-          name: title,
-          amountNIS: amountNIS,                     // in NIS (not billions)
-          amountB: Math.round(amountNIS / 1e9 * 10) / 10, // convert to billions, 1 decimal
-        });
+
+        // If there's a large supplement (revised >> allocated), split into base + supplement
+        const supplement = revised - allocated;
+        if (allocated > 0 && supplement >= SUPP_THRESHOLD_NIS) {
+          items.push({
+            name: title,
+            amountNIS: allocated,
+            amountB: Math.round(allocated / 1e9 * 10) / 10,
+          });
+          items.push({
+            name: `תוספת תקציבית — ${title}`,
+            amountNIS: supplement,
+            amountB: Math.round(supplement / 1e9 * 10) / 10,
+            supp: true,
+          });
+        } else {
+          items.push({
+            name: title,
+            amountNIS: amountNIS,
+            amountB: Math.round(amountNIS / 1e9 * 10) / 10,
+          });
+        }
       }
 
       // Sort by amount descending
@@ -915,6 +975,7 @@
           icon: style.icon,
           color: style.color,
           est: item.est || false,
+          supp: item.supp || false,
         };
       });
 
@@ -1005,7 +1066,7 @@
       const currentYear = new Date().getFullYear();
       const defaultYear = currentYear - 1;
 
-      for (let y = defaultYear; y >= 2022; y--) {
+      for (let y = defaultYear; y >= 2021; y--) {
         const opt = document.createElement('option');
         opt.value = y;
         opt.textContent = `שנת ${y}`;
@@ -1527,10 +1588,12 @@
         totalB += item.amountB;
         if (item.est) hasEstimates = true;
         const estMark = item.est ? ' <span style="color:#f59e0b;font-size:0.7rem">*הערכה</span>' : '';
+        const suppMark = item.supp ? ' <span style="color:#60a5fa;font-size:0.7rem">תוספת</span>' : '';
         const tr = document.createElement('tr');
+        if (item.supp) tr.className = 'supp-row';
         tr.innerHTML = `
           <td class="cat-icon">${item.icon}</td>
-          <td>${item.name}${estMark}</td>
+          <td class="cat-name">${item.name}${estMark}${suppMark}</td>
           <td class="cat-amount">${item.amountB} מיליארד ₪</td>
           <td class="cat-pct">${item.pct.toFixed(1)}%</td>
         `;
