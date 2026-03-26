@@ -447,10 +447,11 @@
       max-width: 300px;
       line-height: 1.5;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      pointer-events: none;
     }
-    .budget-table tr:hover .tooltip { display: block; }
     .budget-table tr .tooltip.active { display: block; }
+    @media (hover: hover) {
+      .budget-table tr:hover .tooltip { display: block; }
+    }
   </style>
 </head>
 <body>
@@ -1685,9 +1686,10 @@
       document.getElementById('modalSubtitle').innerHTML = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים'
         + (isMobile ? '<br><span style="font-size:0.75rem;color:#64748b">לחץ על סעיף לפירוט</span>' : '');
 
-      // Mobile: tap to toggle tooltip
+      // Tap/click to toggle tooltip (works on both mobile and desktop)
       tbody.querySelectorAll('tr').forEach(tr => {
-        tr.addEventListener('click', () => {
+        tr.addEventListener('click', (e) => {
+          e.stopPropagation();
           const tip = tr.querySelector('.tooltip');
           if (!tip) return;
           const wasActive = tip.classList.contains('active');
