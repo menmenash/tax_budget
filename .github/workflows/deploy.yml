@@ -1,4 +1,4 @@
-name: Deploy to Google Cloud Storage
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -7,12 +7,21 @@ on:
     # Re-fetch budget data monthly (in case budget is updated)
     - cron: '0 6 1 * *'
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout code
@@ -24,33 +33,20 @@ jobs:
           echo "--- Files created ---"
           ls -la budget-data.json 2>/dev/null || echo "budget-data.json NOT created"
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Upload HTML to Cloud Storage
-        uses: google-github-actions/upload-cloud-storage@v2
-        with:
-          path: .
-          destination: ${{ secrets.GCS_BUCKET_NAME }}
-          glob: '**/*.html'
-          process_gcloudignore: false
-          headers: |-
-            content-type: text/html; charset=utf-8
-            cache-control: public, max-age=300
-
-      - name: Manage budget data JSON
-        if: ${{ success() }}
+      - name: Prepare site
         run: |
-          if [ -f budget-data.json ]; then
-            echo "Uploading budget-data.json..."
-            gcloud storage cp budget-data.json gs://${{ secrets.GCS_BUCKET_NAME }}/budget-data.json \
-              --content-type="application/json; charset=utf-8" \
-              --cache-control="public, max-age=86400"
-            echo "Done!"
-          else
-            echo "No valid expenditure data found — removing old budget-data.json if exists"
-            gcloud storage rm gs://${{ secrets.GCS_BUCKET_NAME }}/budget-data.json 2>/dev/null || true
-          fi
+          mkdir -p _site
+          cp index.html _site/
+          [ -f budget-data.json ] && cp budget-data.json _site/ || true
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
