@@ -751,6 +751,12 @@
           if (bestLen && bestTotal >= MIN_VALID_BUDGET_NIS) {
             const data = parseApiResponse(byLength[bestLen], year);
             if (data) {
+              // Reject income data (should be expenditure)
+              const topTitles = data.items.slice(0, 5).map(i => i.name).join(' ');
+              if (/מס הכנסה|מלוות|מע"מ ייצור|מע"מ ייבוא/.test(topTitles)) {
+                console.log(`[budget] ${strat.name}: rejected — looks like income data, not expenditure`);
+                continue;
+              }
               console.log(`[budget] SUCCESS: ${strat.name} len=${bestLen}: ${data.totalB}B NIS`);
               return data;
             }
