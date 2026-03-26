@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.15">
   <title>לאן הולך הכסף שלך? - מחשבון תקציב המדינה</title>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
@@ -1646,7 +1646,7 @@
         tr.innerHTML = `
           <td class="cat-icon">${item.icon}</td>
           <td class="cat-name">${item.name}${suppMark}${tooltipHtml}</td>
-          <td class="cat-amount">${item.amountB} מ׳ ₪</td>
+          <td class="cat-amount">${item.amountB} מיליארד ₪</td>
           <td class="cat-pct">${item.pct.toFixed(1)}%</td>
         `;
         tbody.appendChild(tr);
@@ -1654,7 +1654,7 @@
 
       tfoot.innerHTML = `<tr style="font-weight:700;border-top:2px solid #334155">
         <td></td><td>סה״כ</td>
-        <td class="cat-amount">${Math.round(totalB * 10) / 10} מ׳ ₪</td>
+        <td class="cat-amount">${Math.round(totalB * 10) / 10} מיליארד ₪</td>
         <td class="cat-pct">100%</td>
       </tr>`;
 
