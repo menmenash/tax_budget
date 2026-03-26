@@ -627,7 +627,7 @@
     // length and pick the level with the largest total
     const MIN_VALID_BUDGET_NIS = 50e9; // lowered: partial data is better than fallback
 
-    const CACHE_VERSION = 8; // Increment to invalidate old cached data
+    const CACHE_VERSION = 9; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -935,61 +935,55 @@
       }
     }
 
+    // Reject income/revenue data — we only want expenditure budget
+    function isIncomeData(items) {
+      if (!items || items.length < 3) return false;
+      const topTitles = items.slice(0, 5).map(i => i.name || '').join(' ');
+      return /מס הכנסה|מלוות|מע"מ ייצור|מע"מ ייבוא/.test(topTitles);
+    }
+
     async function loadBudgetForYear(year) {
-      // 1. Check localStorage cache
+      // 1. Check localStorage cache (validate it's not income data)
       const cached = loadFromCache(year);
-      if (cached) {
+      if (cached && !isIncomeData(cached.items)) {
         console.log(`[budget] Using cached data for ${year}`);
         applyBudgetData(cached);
         return;
       }
 
-      // 2. Try loading pre-fetched JSON (created by GitHub Actions)
-      try {
-        const jsonResp = await fetch(`budget-data-${year}.json`);
-        if (jsonResp.ok) {
-          const data = await jsonResp.json();
-          if (data && data.items && data.items.length > 0) {
-            console.log(`[budget] Loaded pre-fetched data for ${year}: ${data.totalB}B NIS`);
-            saveToCache(data.year, data);
-            applyBudgetData(data);
-            return;
+      // 2. Try loading pre-fetched JSON (validate it's not income data)
+      for (const jsonUrl of [`budget-data-${year}.json`, 'budget-data.json']) {
+        try {
+          const jsonResp = await fetch(jsonUrl);
+          if (jsonResp.ok) {
+            const data = await jsonResp.json();
+            if (data && data.items && data.items.length > 0) {
+              if (isIncomeData(data.items)) {
+                console.log(`[budget] ${jsonUrl}: rejected — income data, not expenditure`);
+                continue;
+              }
+              if (jsonUrl === 'budget-data.json' && data.year !== year) continue;
+              console.log(`[budget] Loaded ${jsonUrl}: ${data.totalB}B NIS`);
+              saveToCache(data.year, data);
+              applyBudgetData(data);
+              return;
+            }
           }
-        }
-      } catch (e) { /* no pre-fetched file for this year */ }
-
-      // 2b. Try generic budget-data.json
-      try {
-        const jsonResp = await fetch('budget-data.json');
-        if (jsonResp.ok) {
-          const data = await jsonResp.json();
-          if (data && data.year === year && data.items && data.items.length > 0) {
-            console.log(`[budget] Loaded pre-fetched data: ${data.totalB}B NIS`);
-            saveToCache(data.year, data);
-            applyBudgetData(data);
-            return;
-          }
-        }
-      } catch (e) { /* no pre-fetched file */ }
+        } catch (e) { /* file not found */ }
+      }
 
       // 3. Try obudget.org API directly
       const fetched = await tryFetchBudget(year);
-      if (fetched) {
+      if (fetched && !isIncomeData(fetched.items)) {
         fetched.fetchedAt = new Date().toISOString();
         saveToCache(year, fetched);
         applyBudgetData(fetched);
         return;
       }
 
-      // 4. Fallback for 2025
-      if (year === 2025 || FALLBACK_2025) {
-        console.log(`[budget] Using hardcoded fallback for ${year}`);
-        const fb = { ...FALLBACK_2025, year };
-        applyBudgetData(fb);
-        return;
-      }
-
-      console.log(`[budget] No data found for ${year}`);
+      // 4. Fallback
+      console.log(`[budget] Using hardcoded fallback for ${year}`);
+      applyBudgetData({ ...FALLBACK_2025, year });
     }
 
     // Populate year selector and set up change handler

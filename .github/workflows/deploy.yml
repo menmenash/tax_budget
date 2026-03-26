@@ -41,7 +41,7 @@ jobs:
             content-type: text/html; charset=utf-8
             cache-control: public, max-age=300
 
-      - name: Upload budget data JSON
+      - name: Manage budget data JSON
         if: ${{ success() }}
         run: |
           if [ -f budget-data.json ]; then
@@ -51,5 +51,6 @@ jobs:
               --cache-control="public, max-age=86400"
             echo "Done!"
           else
-            echo "No budget-data.json found, skipping upload"
+            echo "No valid expenditure data found — removing old budget-data.json if exists"
+            gcloud storage rm gs://${{ secrets.GCS_BUCKET_NAME }}/budget-data.json 2>/dev/null || true
           fi
