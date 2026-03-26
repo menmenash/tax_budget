@@ -562,6 +562,9 @@
 
       <div class="tax-breakdown-banner" id="taxBreakdown"></div>
 
+      <div id="cardDescBox" style="display:none;background:#162032;border:1px solid #475569;border-radius:10px;padding:0.6rem 0.85rem;margin-bottom:1rem;font-size:0.85rem;color:#cbd5e1;line-height:1.5">
+        <strong id="cardDescTitle" style="color:#93c5fd"></strong> <span id="cardDescText"></span>
+      </div>
       <div class="budget-grid" id="budgetGrid"></div>
 
       <div class="source-info" id="sourceInfo">
@@ -1435,9 +1438,38 @@
       }
     });
 
-    // ==========================================
-    // Main Calculation
-    // ==========================================
+      // Descriptions based on Knesset budget structure & obudget.org
+      const CATEGORY_DESC = {
+        'חוב': 'החזר קרן וריבית על חוב ממשלתי — אגרות חוב ומלוות.',
+        'ביטחון והגנה': 'צה"ל, משרד הביטחון, תעשיות ביטחוניות, פנסיות צבאיות.',
+        'חינוך': 'מערכת החינוך, אוניברסיטאות, מכללות, השכלה גבוהה, תוכניות מעונות.',
+        'ביטוח לאומי': 'העברה מתקציב המדינה למוסד לביטוח לאומי — מימון קצבאות זקנה, ילדים, נכות ואבטלה. זה כסף מיסים, בנוסף לדמי ביטוח לאומי שכל אחד מפריש בנפרד.',
+        'בריאות': 'בתי חולים ממשלתיים, קופות חולים, בריאות הנפש, שירותי חירום.',
+        'תחבורה': 'כבישים, רכבת, תחבורה ציבורית, נמלים, רשות שדות התעופה.',
+        'תשתיות': 'כבישים, רכבת, תחבורה ציבורית, נמלים, רשות שדות התעופה.',
+        'רווחה': 'שירותי רווחה, סיוע לנזקקים, שיקום, מרכזי טיפול, דיור ציבורי.',
+        'ביטחון פנים': 'משטרת ישראל, שב"ס, כיבוי אש, רשות הכניסה לישראל.',
+        'פנסי': 'פנסיות תקציביות לעובדי מדינה, צבא וביטחון.',
+        'שיכון': 'משרד הבינוי והשיכון, סיוע בדיור, פינוי-בינוי, תכנון ובנייה.',
+        'כלכלה': 'משרד הכלכלה, רשות החדשנות, מענקי השקעות, סחר חוץ.',
+        'אוצר': 'משרד האוצר, רשות המיסים, החשב הכללי, רשות שוק ההון.',
+        'חוץ': 'משרד החוץ, שגרירות וקונסוליות, סיוע בינלאומי.',
+        'תרבות': 'תרבות, ספורט, שירותי דת, מועצות דתיות, מורשת.',
+        'עלייה': 'משרד העלייה והקליטה, סיוע לעולים חדשים, מרכזי קליטה.',
+        'חקלאות': 'חקלאות, הגנת הסביבה, גנים לאומיים, שמורות טבע.',
+        'מדע': 'מו"פ, סוכנות החלל, מחקר אקדמי, מכוני מחקר.',
+        'אנרגיה': 'משרד האנרגיה, רשות המים, אנרגיה מתחדשת, תשתיות גז.',
+        'משפט': 'מערכת בתי המשפט, פרקליטות, סנגוריה ציבורית, רישום מקרקעין.',
+        'משרדים אחרים': 'משרד ראש הממשלה, כנסת, נשיא, מבקר המדינה, רזרבות.',
+      };
+
+      function getTooltip(name) {
+        const lower = name.toLowerCase();
+        for (const [key, desc] of Object.entries(CATEGORY_DESC)) {
+          if (lower.includes(key)) return desc;
+        }
+        return '';
+      }
     function parseNum(str) {
       return parseFloat(str.replace(/[^\d.]/g, '')) || 0;
     }
@@ -1561,6 +1593,10 @@
       // Budget cards
       const grid = document.getElementById('budgetGrid');
       grid.innerHTML = '';
+      const cardDescBox = document.getElementById('cardDescBox');
+      const cardDescTitle = document.getElementById('cardDescTitle');
+      const cardDescText = document.getElementById('cardDescText');
+      cardDescBox.style.display = 'none';
       const maxPct = Math.max(...budgetItems.map(b => b.pct));
 
       budgetItems.forEach(item => {
@@ -1584,7 +1620,32 @@
           </div>
           <div class="monthly">${formatCurrency(monthly)} לחודש</div>
         `;
+        // Show description on hover/tap
+        const tip = getTooltip(item.name);
+        if (tip) {
+          card.style.cursor = 'pointer';
+          card.addEventListener('click', () => {
+            grid.querySelectorAll('.budget-card').forEach(c => c.style.borderColor = '#334155');
+            card.style.borderColor = item.color;
+            cardDescTitle.textContent = item.name + ':';
+            cardDescText.textContent = tip;
+            cardDescBox.style.display = 'block';
+          });
+          card.addEventListener('mouseenter', () => {
+            cardDescTitle.textContent = item.name + ':';
+            cardDescText.textContent = tip;
+            cardDescBox.style.display = 'block';
+          });
+        }
         grid.appendChild(card);
+      });
+
+      // Desktop: hide description when mouse leaves grid
+      grid.addEventListener('mouseleave', () => {
+        if (!('ontouchstart' in window)) {
+          cardDescBox.style.display = 'none';
+          grid.querySelectorAll('.budget-card').forEach(c => c.style.borderColor = '#334155');
+        }
       });
 
       document.getElementById('results').classList.add('visible');
@@ -1607,39 +1668,6 @@
         const style = getCategoryStyle(i.name);
         return { ...i, pct: (i.amountB / activeFallback.totalB) * 100, ...style };
       });
-
-      // Descriptions based on Knesset budget structure & obudget.org
-      const CATEGORY_DESC = {
-        'חוב': 'החזר קרן וריבית על חוב ממשלתי — אגרות חוב ומלוות.',
-        'ביטחון והגנה': 'צה"ל, משרד הביטחון, תעשיות ביטחוניות, פנסיות צבאיות.',
-        'חינוך': 'מערכת החינוך, אוניברסיטאות, מכללות, השכלה גבוהה, תוכניות מעונות.',
-        'ביטוח לאומי': 'העברה מתקציב המדינה למוסד לביטוח לאומי — מימון קצבאות זקנה, ילדים, נכות ואבטלה. זה כסף מיסים, בנוסף לדמי ביטוח לאומי שכל אחד מפריש בנפרד.',
-        'בריאות': 'בתי חולים ממשלתיים, קופות חולים, בריאות הנפש, שירותי חירום.',
-        'תחבורה': 'כבישים, רכבת, תחבורה ציבורית, נמלים, רשות שדות התעופה.',
-        'תשתיות': 'כבישים, רכבת, תחבורה ציבורית, נמלים, רשות שדות התעופה.',
-        'רווחה': 'שירותי רווחה, סיוע לנזקקים, שיקום, מרכזי טיפול, דיור ציבורי.',
-        'ביטחון פנים': 'משטרת ישראל, שב"ס, כיבוי אש, רשות הכניסה לישראל.',
-        'פנסי': 'פנסיות תקציביות לעובדי מדינה, צבא וביטחון.',
-        'שיכון': 'משרד הבינוי והשיכון, סיוע בדיור, פינוי-בינוי, תכנון ובנייה.',
-        'כלכלה': 'משרד הכלכלה, רשות החדשנות, מענקי השקעות, סחר חוץ.',
-        'אוצר': 'משרד האוצר, רשות המיסים, החשב הכללי, רשות שוק ההון.',
-        'חוץ': 'משרד החוץ, שגרירות וקונסוליות, סיוע בינלאומי.',
-        'תרבות': 'תרבות, ספורט, שירותי דת, מועצות דתיות, מורשת.',
-        'עלייה': 'משרד העלייה והקליטה, סיוע לעולים חדשים, מרכזי קליטה.',
-        'חקלאות': 'חקלאות, הגנת הסביבה, גנים לאומיים, שמורות טבע.',
-        'מדע': 'מו"פ, סוכנות החלל, מחקר אקדמי, מכוני מחקר.',
-        'אנרגיה': 'משרד האנרגיה, רשות המים, אנרגיה מתחדשת, תשתיות גז.',
-        'משפט': 'מערכת בתי המשפט, פרקליטות, סנגוריה ציבורית, רישום מקרקעין.',
-        'משרדים אחרים': 'משרד ראש הממשלה, כנסת, נשיא, מבקר המדינה, רזרבות.',
-      };
-
-      function getTooltip(name) {
-        const lower = name.toLowerCase();
-        for (const [key, desc] of Object.entries(CATEGORY_DESC)) {
-          if (lower.includes(key)) return desc;
-        }
-        return '';
-      }
 
       const descBox = document.getElementById('descBox');
       const descTitle = document.getElementById('descTitle');
