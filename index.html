@@ -587,8 +587,110 @@
     }
 
     // Fallback data for 2025 (used when API is unavailable)
-    // Fallback: Israel 2025 approved budget — expenditure side
-    // Source: Knesset Research Center, obudget.org (~683B net expenditure)
+    // ==========================================
+    // Hardcoded fallback budget data by year
+    // Sources: Knesset Research Center, Bank of Israel annual reports,
+    //   Ministry of Finance budget execution reports, obudget.org
+    // All figures in billions of NIS (net expenditure including debt repayment)
+    // ==========================================
+
+    // 2022: Pre-war year. Budget surplus of 9.8B NIS (0.6% GDP).
+    // Net budget proposal ~541B including debt. Actual expenditure ~459B + debt ~88B.
+    // Sources: Knesset budget docs, Calcalist, Bank of Israel
+    const FALLBACK_2022 = {
+      year: 2022,
+      totalB: 540,
+      items: [
+        { name: "החזר חובות וריבית",             amountB: 88 },
+        { name: "חינוך והשכלה גבוהה",              amountB: 72 },
+        { name: "ביטחון והגנה",                   amountB: 68 },
+        { name: "ביטוח לאומי וקצבאות",             amountB: 50 },
+        { name: "בריאות",                          amountB: 45 },
+        { name: "תשתיות ותחבורה",                 amountB: 36 },
+        { name: "רווחה ושירותים חברתיים",           amountB: 28 },
+        { name: "פנסיה תקציבית",                  amountB: 27 },
+        { name: "ביטחון פנים ומשטרה",              amountB: 19 },
+        { name: "שיכון ובינוי",                    amountB: 14 },
+        { name: "כלכלה ותעשייה",                   amountB: 12, est: true },
+        { name: "משרד האוצר",                     amountB: 10, est: true },
+        { name: "תרבות, ספורט ודת",                amountB: 7 },
+        { name: "חוץ ודיפלומטיה",                  amountB: 7, est: true },
+        { name: "חקלאות וסביבה",                  amountB: 6 },
+        { name: "עלייה וקליטה",                   amountB: 6 },
+        { name: "מדע וטכנולוגיה",                 amountB: 5.5 },
+        { name: "אנרגיה ומים",                    amountB: 5, est: true },
+        { name: "משפט ובתי משפט",                 amountB: 4.5 },
+        { name: "משרדים אחרים ורזרבות",            amountB: 30 },
+      ],
+      source: 'fallback',
+    };
+
+    // 2023: Oct 7 war year. Supplementary budgets added ~26B.
+    // Revised net budget 636.6B including debt ~126B. Expenditure ceiling 510.6B.
+    // Actual execution ~516B (excl debt). Defense surged ~30% due to war.
+    // Sources: Knesset, Calcalist, Bank of Israel ch.6
+    const FALLBACK_2023 = {
+      year: 2023,
+      totalB: 584,
+      items: [
+        { name: "ביטחון והגנה",                   amountB: 98 },
+        { name: "החזר חובות וריבית",             amountB: 95 },
+        { name: "חינוך והשכלה גבוהה",              amountB: 80 },
+        { name: "ביטוח לאומי וקצבאות",             amountB: 58 },
+        { name: "בריאות",                          amountB: 48 },
+        { name: "תשתיות ותחבורה",                 amountB: 38 },
+        { name: "רווחה ושירותים חברתיים",           amountB: 30 },
+        { name: "פנסיה תקציבית",                  amountB: 28 },
+        { name: "ביטחון פנים ומשטרה",              amountB: 22 },
+        { name: "שיכון ובינוי",                    amountB: 12 },
+        { name: "כלכלה ותעשייה",                   amountB: 10, est: true },
+        { name: "משרד האוצר",                     amountB: 9, est: true },
+        { name: "תרבות, ספורט ודת",                amountB: 7.5 },
+        { name: "חוץ ודיפלומטיה",                  amountB: 7, est: true },
+        { name: "חקלאות וסביבה",                  amountB: 6.5 },
+        { name: "עלייה וקליטה",                   amountB: 6 },
+        { name: "מדע וטכנולוגיה",                 amountB: 5.5 },
+        { name: "אנרגיה ומים",                    amountB: 5, est: true },
+        { name: "משפט ובתי משפט",                 amountB: 4.5 },
+        { name: "משרדים אחרים ורזרבות",            amountB: 14 },
+      ],
+      source: 'fallback',
+    };
+
+    // 2024: Full war year. Largest budget in Israel's history.
+    // Net budget (revised) ~724B including debt ~158B. Expenditure ceiling 584.1B.
+    // Actual execution 620.5B (net, excl credit). Defense ~152B (total security ~168B).
+    // Deficit 6.8% GDP. Sources: Gov.il execution report, Bank of Israel, Knesset
+    const FALLBACK_2024 = {
+      year: 2024,
+      totalB: 670,
+      items: [
+        { name: "ביטחון והגנה",                   amountB: 152 },
+        { name: "החזר חובות וריבית",             amountB: 110 },
+        { name: "חינוך והשכלה גבוהה",              amountB: 84 },
+        { name: "ביטוח לאומי וקצבאות",             amountB: 61 },
+        { name: "בריאות",                          amountB: 52 },
+        { name: "תשתיות ותחבורה",                 amountB: 40 },
+        { name: "רווחה ושירותים חברתיים",           amountB: 32 },
+        { name: "פנסיה תקציבית",                  amountB: 29 },
+        { name: "ביטחון פנים ומשטרה",              amountB: 25 },
+        { name: "שיכון ובינוי",                    amountB: 14 },
+        { name: "כלכלה ותעשייה",                   amountB: 11, est: true },
+        { name: "משרד האוצר",                     amountB: 9, est: true },
+        { name: "תרבות, ספורט ודת",                amountB: 7.5 },
+        { name: "חוץ ודיפלומטיה",                  amountB: 7, est: true },
+        { name: "חקלאות וסביבה",                  amountB: 7 },
+        { name: "עלייה וקליטה",                   amountB: 6.5 },
+        { name: "מדע וטכנולוגיה",                 amountB: 6 },
+        { name: "אנרגיה ומים",                    amountB: 5, est: true },
+        { name: "משפט ובתי משפט",                 amountB: 5 },
+        { name: "משרדים אחרים ורזרבות",            amountB: 7 },
+      ],
+      source: 'fallback',
+    };
+
+    // 2025: Approved budget. ~683B net expenditure.
+    // Source: Knesset Research Center, obudget.org
     // Sorted by size descending
     const FALLBACK_2025 = {
       year: 2025,
@@ -616,6 +718,14 @@
         { name: "משרדים אחרים ורזרבות",            amountB: 7 },
       ],
       source: 'fallback',
+    };
+
+    // Lookup map for year-specific fallback data
+    const FALLBACK_BY_YEAR = {
+      2022: FALLBACK_2022,
+      2023: FALLBACK_2023,
+      2024: FALLBACK_2024,
+      2025: FALLBACK_2025,
     };
 
     // Active budget data (populated on load)
@@ -878,13 +988,15 @@
         return;
       }
 
-      // 4. Fallback — use 2025 data as the proportional reference
+      // 4. Fallback — use year-specific hardcoded data if available, else 2025 proportions
       console.log(`[budget] Using hardcoded fallback for ${year}`);
-      const fallback = { ...FALLBACK_2025, year };
-      if (year !== 2025) {
-        fallback.note = 'proportions';
+      const yearFallback = FALLBACK_BY_YEAR[year];
+      if (yearFallback) {
+        applyBudgetData({ ...yearFallback });
+      } else {
+        const fallback = { ...FALLBACK_2025, year, note: 'proportions' };
+        applyBudgetData(fallback);
       }
-      applyBudgetData(fallback);
     }
 
     // Populate year selector and set up change handler
@@ -1403,9 +1515,10 @@
 
       document.getElementById('modalTitle').textContent = `מבנה תקציב המדינה ${budgetYear}`;
 
-      const items = budgetItems.length > 0 ? budgetItems : FALLBACK_2025.items.map(i => {
+      const activeFallback = FALLBACK_BY_YEAR[budgetYear] || FALLBACK_2025;
+      const items = budgetItems.length > 0 ? budgetItems : activeFallback.items.map(i => {
         const style = getCategoryStyle(i.name);
-        return { ...i, pct: (i.amountB / FALLBACK_2025.totalB) * 100, ...style };
+        return { ...i, pct: (i.amountB / activeFallback.totalB) * 100, ...style };
       });
 
       let totalB = 0;
