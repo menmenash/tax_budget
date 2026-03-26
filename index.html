@@ -637,7 +637,7 @@
     // length and pick the level with the largest total
     const MIN_VALID_BUDGET_NIS = 200e9; // Israel's budget is 400B+; reject anything under 200B as partial/supplementary
 
-    const CACHE_VERSION = 9; // Increment to invalidate old cached data
+    const CACHE_VERSION = 10; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -703,16 +703,17 @@
     // Per: https://github.com/OpenBudget/BudgetKey/blob/master/documentation/UsingTheAPI.md
     // ------------------------------------------
     async function fetchViaApi(year) {
+      // Budget table has BOTH income (code '00xx') and expenditure (all other codes).
+      // Filter: code not like '00%' to get expenditure only.
+      // net_revised includes supplementary budgets (תקציב מתוקן).
+      // depth=2 = ministry level (e.g., code '0234' = sub-ministry).
       const strategies = [
-        { name: 'budget_items_data', sql: `select code,title,net_revised,net_allocated from budget_items_data where year=${year} order by net_revised desc` },
-        { name: 'budget depth=2', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 order by net_revised desc` },
-        // Codes are like "00.37.02" → depth=2 gives 6-char codes (sub-items)
-        // We need to find the ministry level. Try multiple approaches:
-        { name: 'budget no-depth', sql: `select distinct code,title,net_revised,net_allocated,depth from budget where year=${year} and net_revised > 0 order by net_revised desc` },
+        // Primary: expenditure ministries at depth=2 (most granular ministry-level)
+        { name: 'budget depth=2 (expenditure)', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 and code not like '00%' and net_revised > 0 order by net_revised desc` },
+        // Fallback: depth=1 (higher-level grouping)
+        { name: 'budget depth=1 (expenditure)', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=1 and code not like '00%' and net_revised > 0 order by net_revised desc` },
+        // Last resort: budget_items_data table
         { name: 'budget_items_data', sql: `select code,title,net_revised,net_allocated from budget_items_data where year=${year} and net_revised > 0 order by net_revised desc` },
-        { name: 'budget depth=2', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 order by net_revised desc` },
-        { name: 'budget depth=1', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=1 order by net_revised desc` },
-        { name: 'budget depth=0', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=0 order by net_revised desc` },
       ];
 
       for (const strat of strategies) {
@@ -727,17 +728,23 @@
           }
 
           const json = await resp.json();
-          const rows = json.rows || (Array.isArray(json) ? json : []);
+          let rows = json.rows || (Array.isArray(json) ? json : []);
 
           if (!rows.length) {
             console.warn(`[budget] ${strat.name}: 0 rows`);
             continue;
           }
 
-          console.log(`[budget] ${strat.name}: ${rows.length} rows`);
-          if (rows[0]) console.log(`[budget]   sample code: "${rows[0].code}", title: "${rows[0].title}"`);
+          // Extra safety: filter out any income items that slipped through
+          rows = rows.filter(r => {
+            const code = (r.code || '').replace(/\./g, '');
+            return !code.startsWith('00');
+          });
 
-          // Group by code length to find the right hierarchy
+          console.log(`[budget] ${strat.name}: ${rows.length} expenditure rows`);
+          if (rows[0]) console.log(`[budget]   sample: "${rows[0].code}" ${rows[0].title}`);
+
+          // Group by code length to find the right hierarchy level
           const byLength = {};
           rows.forEach(r => {
             const code = (r.code || '').replace(/\./g, '');
@@ -746,32 +753,22 @@
             byLength[len].push(r);
           });
 
-          for (const [len, items] of Object.entries(byLength)) {
-            const total = items.reduce((s, r) => s + (r.net_revised || r.net_allocated || 0), 0);
-            console.log(`[budget]   len=${len}: ${items.length} items, ${(total/1e9).toFixed(1)}B`);
-          }
-
           // Pick the code length with the biggest total
           let bestLen = null, bestTotal = 0;
           for (const [len, items] of Object.entries(byLength)) {
             const total = items.reduce((s, r) => s + (r.net_revised || r.net_allocated || 0), 0);
+            console.log(`[budget]   len=${len}: ${items.length} items, ${(total/1e9).toFixed(1)}B`);
             if (total > bestTotal) { bestTotal = total; bestLen = len; }
           }
 
           if (bestLen && bestTotal >= MIN_VALID_BUDGET_NIS) {
             const data = parseApiResponse(byLength[bestLen], year);
             if (data) {
-              // Reject income data (should be expenditure)
-              const topTitles = data.items.slice(0, 5).map(i => i.name).join(' ');
-              if (/מס הכנסה|מלוות|מע"מ ייצור|מע"מ ייבוא/.test(topTitles)) {
-                console.log(`[budget] ${strat.name}: rejected — looks like income data, not expenditure`);
-                continue;
-              }
-              console.log(`[budget] SUCCESS: ${strat.name} len=${bestLen}: ${data.totalB}B NIS`);
+              console.log(`[budget] SUCCESS: ${strat.name} len=${bestLen}: ${data.totalB}B NIS, ${data.items.length} items`);
               return data;
             }
           }
-          console.log(`[budget] ${strat.name}: best ${(bestTotal/1e9).toFixed(1)}B < ${MIN_VALID_BUDGET_NIS/1e9}B threshold`);
+          console.log(`[budget] ${strat.name}: total ${(bestTotal/1e9).toFixed(1)}B < ${MIN_VALID_BUDGET_NIS/1e9}B threshold`);
         } catch (e) {
           console.warn(`[budget] ${strat.name} error:`, e.message);
         }
@@ -780,130 +777,16 @@
     }
 
     // ------------------------------------------
-    // Strategy 2: Direct budget item endpoint
-    // Returns a single budget node with children
-    // ------------------------------------------
-    async function fetchViaBudgetItem(year) {
-      // Try the item endpoint for the top-level budget
-      const url = `https://next.obudget.org/api/budget-item/${year}/00`;
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const json = await resp.json();
-
-      // This endpoint may return { children: [...] } or similar structure
-      const children = json.children || json.items || [];
-      if (children.length === 0 && json.title) {
-        // Maybe nested differently - try to extract from the response
-        return null;
-      }
-      if (children.length > 0) {
-        return parseApiResponse(children, year);
-      }
-      return null;
-    }
-
-    // ------------------------------------------
-    // Strategy 3: Scrape the HTML page for
-    // embedded JSON / server-side rendered data
-    // ------------------------------------------
-    async function fetchViaPageScrape(year) {
-      const url = `https://next.obudget.org/i/budget/00/${year}`;
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const html = await resp.text();
-
-      // obudget.org is an SPA but may embed initial data as JSON
-      // Look for common patterns: __NEXT_DATA__, window.__data__, etc.
-      const patterns = [
-        /__NEXT_DATA__\s*=\s*({.+?})\s*<\/script>/s,
-        /window\.__data__\s*=\s*({.+?});/s,
-        /window\.__INITIAL_STATE__\s*=\s*({.+?});/s,
-        /"children"\s*:\s*(\[.+?\])\s*[,}]/s,
-      ];
-
-      for (const pat of patterns) {
-        const match = html.match(pat);
-        if (match) {
-          try {
-            const parsed = JSON.parse(match[1]);
-            // Try to find budget items in the parsed data
-            const items = extractBudgetFromParsed(parsed, year);
-            if (items) return items;
-          } catch (e) { /* continue to next pattern */ }
-        }
-      }
-
-      // Try to extract structured data from visible HTML table rows
-      const tableData = extractFromHtmlTable(html, year);
-      if (tableData) return tableData;
-
-      return null;
-    }
-
-    function extractBudgetFromParsed(obj, year) {
-      // Recursively search for an array of budget items
-      if (Array.isArray(obj)) {
-        // Check if this looks like budget rows
-        if (obj.length > 3 && obj[0] && (obj[0].title || obj[0].name)) {
-          const rows = obj.map(item => ({
-            title: item.title || item.name || '',
-            net_revised: item.net_revised || item.net_allocated || item.amount || item.value || 0,
-          })).filter(r => r.title && r.net_revised > 0);
-
-          if (rows.length > 3) {
-            return parseApiResponse(rows, year);
-          }
-        }
-      }
-
-      if (obj && typeof obj === 'object') {
-        for (const key of Object.keys(obj)) {
-          const result = extractBudgetFromParsed(obj[key], year);
-          if (result) return result;
-        }
-      }
-      return null;
-    }
-
-    function extractFromHtmlTable(html, year) {
-      // Try to parse visible Hebrew budget items from the page HTML
-      // Look for patterns like: title with amount in NIS
-      const itemRegex = /class="[^"]*item[^"]*"[^>]*>([^<]+)<[\s\S]*?[\d,]{4,}/g;
-      // This is a heuristic - might not match, which is fine (we fall back)
-      return null;
-    }
-
-    // ------------------------------------------
-    // Orchestration: try all strategies in order
+    // Orchestration: fetch budget via SQL API
     // ------------------------------------------
     async function tryFetchBudget(year) {
-      // Strategy 1: SQL API
       try {
-        console.log(`[budget] Trying SQL API for ${year}...`);
+        console.log(`[budget] Fetching expenditure data for ${year}...`);
         const data = await fetchViaApi(year);
         if (data) { data.source = 'obudget'; return data; }
       } catch (e) {
-        console.warn(`[budget] SQL API failed for ${year}:`, e.message);
+        console.warn(`[budget] API failed for ${year}:`, e.message);
       }
-
-      // Strategy 2: Direct budget item endpoint
-      try {
-        console.log(`[budget] Trying budget item endpoint for ${year}...`);
-        const data = await fetchViaBudgetItem(year);
-        if (data) { data.source = 'obudget'; return data; }
-      } catch (e) {
-        console.warn(`[budget] Budget item endpoint failed for ${year}:`, e.message);
-      }
-
-      // Strategy 3: Page scrape
-      try {
-        console.log(`[budget] Trying page scrape for ${year}...`);
-        const data = await fetchViaPageScrape(year);
-        if (data) { data.source = 'obudget-scrape'; return data; }
-      } catch (e) {
-        console.warn(`[budget] Page scrape failed for ${year}:`, e.message);
-      }
-
       return null;
     }
 

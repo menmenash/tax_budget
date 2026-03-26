@@ -148,82 +148,82 @@ def fetch(sql):
         print(f"  Fetch error: {e}")
         return []
 
-# Try budget_items_data for multiple years (2025, 2024, 2023)
-for year in [${YEAR}, ${YEAR}-1, ${YEAR}-2]:
-    print(f"Trying budget_items_data year={year}...")
-    rows = fetch(f"select code,title,net_revised,net_allocated from budget_items_data where year={year} and net_revised > 0 order by net_revised desc")
+YEAR = ${YEAR}
 
-    if not rows:
-        print(f"  0 rows for {year}")
-        continue
+# Strategy: fetch from 'budget' table at depth=2, EXCLUDE income items (code '00%')
+# net_revised includes supplementary budgets (תקציב מתוקן)
+queries = [
+    ("budget depth=2 (expenditure)",
+     "select code,title,net_revised,net_allocated from budget where year={year} and depth=2 and code not like '00%' and net_revised > 0 order by net_revised desc"),
+    ("budget depth=1 (expenditure)",
+     "select code,title,net_revised,net_allocated from budget where year={year} and depth=1 and code not like '00%' and net_revised > 0 order by net_revised desc"),
+    ("budget_items_data",
+     "select code,title,net_revised,net_allocated from budget_items_data where year={year} and net_revised > 0 order by net_revised desc"),
+]
 
-    print(f"  {len(rows)} rows for {year}")
+for year in [YEAR, YEAR-1, YEAR-2]:
+    for qname, sql_tmpl in queries:
+        sql = sql_tmpl.format(year=year)
+        print(f"\nTrying {qname} year={year}...")
+        rows = fetch(sql)
 
-    # Group by code length
-    by_len = {}
-    for r in rows:
-        code = (r.get('code') or '').replace('.', '')
-        l = len(code)
-        if l not in by_len: by_len[l] = []
-        by_len[l].append(r)
+        if not rows:
+            print(f"  0 rows")
+            continue
 
-    for l in sorted(by_len.keys()):
-        items = by_len[l]
-        total = sum(r.get('net_revised') or r.get('net_allocated') or 0 for r in items)
-        print(f"    len={l}: {len(items)} items, {total/1e9:.1f}B")
+        # Extra safety: filter out income items
+        rows = [r for r in rows if not (r.get('code') or '').replace('.', '').startswith('00')]
 
-    # Pick the code length where total is 400-900B (reasonable for Israeli expenditure budget)
-    best_len, best_total = None, 0
-    for l, items in by_len.items():
-        total = sum(r.get('net_revised') or r.get('net_allocated') or 0 for r in items)
-        if 200e9 < total < 1000e9 and total > best_total:
-            best_total, best_len = total, l
+        print(f"  {len(rows)} expenditure rows")
 
-    if not best_len:
-        # Just pick the largest
-        for l, items in by_len.items():
+        # Group by code length to find best hierarchy level
+        by_len = {}
+        for r in rows:
+            code = (r.get('code') or '').replace('.', '')
+            l = len(code)
+            if l not in by_len: by_len[l] = []
+            by_len[l].append(r)
+
+        best_len, best_total = None, 0
+        for l in sorted(by_len.keys()):
+            items = by_len[l]
             total = sum(r.get('net_revised') or r.get('net_allocated') or 0 for r in items)
-            if total > best_total: best_total, best_len = total, l
+            print(f"    len={l}: {len(items)} items, {total/1e9:.1f}B")
+            if total > best_total:
+                best_total, best_len = total, l
 
-    if not best_len or best_total < 50e9:
-        print(f"  No valid expenditure data for {year}")
-        continue
+        if not best_len or best_total < 200e9:
+            print(f"  Total {best_total/1e9:.1f}B < 200B threshold")
+            continue
 
-    selected = by_len[best_len]
+        selected = by_len[best_len]
+        total_nis = sum(r.get('net_revised') or r.get('net_allocated') or 0 for r in selected)
+        items = sorted([{
+            'name': r.get('title', ''),
+            'amountNIS': r.get('net_revised') or r.get('net_allocated') or 0,
+            'amountB': round((r.get('net_revised') or r.get('net_allocated') or 0) / 1e9, 1),
+        } for r in selected if (r.get('net_revised') or r.get('net_allocated') or 0) > 0],
+        key=lambda x: -x['amountNIS'])
 
-    # Verify it's expenditure (should NOT have "מס הכנסה" or "מלוות" as top items)
-    top_titles = ' '.join(r.get('title', '') for r in selected[:5])
-    if 'מס הכנסה' in top_titles or 'מלוות' in top_titles or 'מע"מ' in top_titles:
-        print(f"  WARNING: looks like income data, not expenditure. Skipping.")
-        continue
+        result = {
+            'year': year,
+            'totalNIS': total_nis,
+            'totalB': round(total_nis / 1e9, 1),
+            'items': items,
+            'source': 'obudget',
+            'fetchedAt': datetime.utcnow().isoformat() + 'Z',
+        }
 
-    total_nis = sum(r.get('net_revised') or r.get('net_allocated') or 0 for r in selected)
-    items = sorted([{
-        'name': r.get('title', ''),
-        'amountNIS': r.get('net_revised') or r.get('net_allocated') or 0,
-        'amountB': round((r.get('net_revised') or r.get('net_allocated') or 0) / 1e9, 1),
-    } for r in selected if (r.get('net_revised') or r.get('net_allocated') or 0) > 0],
-    key=lambda x: -x['amountNIS'])
+        print(f"\nSUCCESS: year={year}, {result['totalB']}B NIS, {len(items)} items")
+        for item in items[:5]:
+            print(f"  {item['name']}: {item['amountB']}B")
 
-    result = {
-        'year': year,
-        'totalNIS': total_nis,
-        'totalB': round(total_nis / 1e9, 1),
-        'items': items,
-        'source': 'obudget',
-        'fetchedAt': datetime.utcnow().isoformat() + 'Z',
-    }
+        with open('budget-data.json', 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        print("Saved to budget-data.json")
+        sys.exit(0)
 
-    print(f"\nSUCCESS: year={year}, {result['totalB']}B NIS, {len(items)} items")
-    for item in items[:5]:
-        print(f"  {item['name']}: {item['amountB']}B")
-
-    with open('budget-data.json', 'w', encoding='utf-8') as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-    print("Saved to budget-data.json")
-    sys.exit(0)
-
-print("\nNo expenditure data found in budget_items_data for any year.")
+print("\nNo expenditure data found for any year.")
 print("Browser will use hardcoded fallback data.")
 PYEOF
 
