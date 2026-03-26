@@ -520,7 +520,7 @@
           <tbody id="budgetTableBody"></tbody>
           <tfoot id="budgetTableFoot"></tfoot>
         </table>
-        <p style="color:#475569;font-size:0.75rem;margin-top:1rem;text-align:center">
+        <p style="color:#475569;font-size:0.75rem;margin-top:1rem;text-align:center" id="modalSourceLine">
           מקור: <a href="https://next.obudget.org" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a>
         </p>
       </div>
@@ -1606,11 +1606,16 @@
         <td class="cat-pct">100%</td>
       </tr>`;
 
-      if (hasEstimates) {
-        document.getElementById('modalSubtitle').innerHTML =
-          'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים<br><span style="color:#f59e0b;font-size:0.75rem">* סעיפים מסומנים בכוכבית הם הערכה — הסכום המדויק לא זמין מה-API</span>';
+      document.getElementById('modalSubtitle').textContent = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים';
+
+      const srcLine = document.getElementById('modalSourceLine');
+      if (budgetSource === 'obudget') {
+        srcLine.innerHTML = `מקור: <a href="https://next.obudget.org/i/budget/00/${budgetYear}" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a>`;
+      } else if (hasEstimates) {
+        srcLine.innerHTML = `מקור: <a href="https://next.obudget.org" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a>, <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener" style="color:#60a5fa">אתר הכנסת</a>`
+          + `<br><span style="color:#f59e0b">* סעיפים מסומנים בכוכבית — הערכה על בסיס נתוני הכנסת ומשרד האוצר. שאר הסעיפים מ-obudget.org.</span>`;
       } else {
-        document.getElementById('modalSubtitle').textContent = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים';
+        srcLine.innerHTML = `מקור: <a href="https://next.obudget.org" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a>`;
       }
 
       document.getElementById('budgetModal').classList.add('visible');
