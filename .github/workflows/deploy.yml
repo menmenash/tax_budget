@@ -3,28 +3,34 @@ name: Deploy to Google Cloud Storage
 on:
   push:
     branches: [main]
+  schedule:
+    # Re-fetch budget data monthly (in case budget is updated)
+    - cron: '0 6 1 * *'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write  # Required for Workload Identity Federation
+      id-token: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Fetch budget data from obudget.org API
+        run: |
+          bash fetch-budget.sh
+          echo "--- Files created ---"
+          ls -la budget-data.json 2>/dev/null || echo "budget-data.json NOT created"
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          # Option A: Workload Identity Federation (recommended, no key file)
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          # Option B: Service Account Key (uncomment below, comment out above)
-          # credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Upload to Cloud Storage
+      - name: Upload HTML to Cloud Storage
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: .
@@ -35,8 +41,16 @@ jobs:
             content-type: text/html; charset=utf-8
             cache-control: public, max-age=300
 
-      - name: Set bucket website configuration
+      - name: Manage budget data JSON
+        if: ${{ success() }}
         run: |
-          gcloud storage buckets update gs://${{ secrets.GCS_BUCKET_NAME }} \
-            --web-main-page-suffix=index.html \
-            --web-error-page=index.html
+          if [ -f budget-data.json ]; then
+            echo "Uploading budget-data.json..."
+            gcloud storage cp budget-data.json gs://${{ secrets.GCS_BUCKET_NAME }}/budget-data.json \
+              --content-type="application/json; charset=utf-8" \
+              --cache-control="public, max-age=86400"
+            echo "Done!"
+          else
+            echo "No valid expenditure data found — removing old budget-data.json if exists"
+            gcloud storage rm gs://${{ secrets.GCS_BUCKET_NAME }}/budget-data.json 2>/dev/null || true
+          fi
