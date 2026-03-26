@@ -1684,7 +1684,9 @@
 
       const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       document.getElementById('modalSubtitle').innerHTML = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים'
-        + (isMobile ? '<br><span style="font-size:0.75rem;color:#64748b">לחץ על סעיף לפירוט</span>' : '');
+        + '<br><span style="font-size:0.75rem;color:#64748b">'
+        + (isMobile ? 'לחץ על סעיף לפירוט' : 'העבר מעל סעיף לפירוט')
+        + '</span>';
 
       // Tap/click to toggle tooltip (works on both mobile and desktop)
       tbody.querySelectorAll('tr').forEach(tr => {
