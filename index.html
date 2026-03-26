@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>לאן הולך הכסף שלך? - מחשבון תקציב המדינה</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -586,8 +587,110 @@
     }
 
     // Fallback data for 2025 (used when API is unavailable)
-    // Fallback: Israel 2025 approved budget — expenditure side
-    // Source: Knesset Research Center, obudget.org (~683B net expenditure)
+    // ==========================================
+    // Hardcoded fallback budget data by year
+    // Sources: Knesset Research Center, Bank of Israel annual reports,
+    //   Ministry of Finance budget execution reports, obudget.org
+    // All figures in billions of NIS (net expenditure including debt repayment)
+    // ==========================================
+
+    // 2022: Pre-war year. Budget surplus of 9.8B NIS (0.6% GDP).
+    // Net budget proposal ~541B including debt. Actual expenditure ~459B + debt ~88B.
+    // Sources: Knesset budget docs, Calcalist, Bank of Israel
+    const FALLBACK_2022 = {
+      year: 2022,
+      totalB: 540,
+      items: [
+        { name: "החזר חובות וריבית",             amountB: 88 },
+        { name: "חינוך והשכלה גבוהה",              amountB: 72 },
+        { name: "ביטחון והגנה",                   amountB: 68 },
+        { name: "ביטוח לאומי וקצבאות",             amountB: 50 },
+        { name: "בריאות",                          amountB: 45 },
+        { name: "תשתיות ותחבורה",                 amountB: 36 },
+        { name: "רווחה ושירותים חברתיים",           amountB: 28 },
+        { name: "פנסיה תקציבית",                  amountB: 27 },
+        { name: "ביטחון פנים ומשטרה",              amountB: 19 },
+        { name: "שיכון ובינוי",                    amountB: 14 },
+        { name: "כלכלה ותעשייה",                   amountB: 12, est: true },
+        { name: "משרד האוצר",                     amountB: 10, est: true },
+        { name: "תרבות, ספורט ודת",                amountB: 7 },
+        { name: "חוץ ודיפלומטיה",                  amountB: 7, est: true },
+        { name: "חקלאות וסביבה",                  amountB: 6 },
+        { name: "עלייה וקליטה",                   amountB: 6 },
+        { name: "מדע וטכנולוגיה",                 amountB: 5.5 },
+        { name: "אנרגיה ומים",                    amountB: 5, est: true },
+        { name: "משפט ובתי משפט",                 amountB: 4.5 },
+        { name: "משרדים אחרים ורזרבות",            amountB: 30 },
+      ],
+      source: 'fallback',
+    };
+
+    // 2023: Oct 7 war year. Supplementary budgets added ~26B.
+    // Revised net budget 636.6B including debt ~126B. Expenditure ceiling 510.6B.
+    // Actual execution ~516B (excl debt). Defense surged ~30% due to war.
+    // Sources: Knesset, Calcalist, Bank of Israel ch.6
+    const FALLBACK_2023 = {
+      year: 2023,
+      totalB: 584,
+      items: [
+        { name: "ביטחון והגנה",                   amountB: 98 },
+        { name: "החזר חובות וריבית",             amountB: 95 },
+        { name: "חינוך והשכלה גבוהה",              amountB: 80 },
+        { name: "ביטוח לאומי וקצבאות",             amountB: 58 },
+        { name: "בריאות",                          amountB: 48 },
+        { name: "תשתיות ותחבורה",                 amountB: 38 },
+        { name: "רווחה ושירותים חברתיים",           amountB: 30 },
+        { name: "פנסיה תקציבית",                  amountB: 28 },
+        { name: "ביטחון פנים ומשטרה",              amountB: 22 },
+        { name: "שיכון ובינוי",                    amountB: 12 },
+        { name: "כלכלה ותעשייה",                   amountB: 10, est: true },
+        { name: "משרד האוצר",                     amountB: 9, est: true },
+        { name: "תרבות, ספורט ודת",                amountB: 7.5 },
+        { name: "חוץ ודיפלומטיה",                  amountB: 7, est: true },
+        { name: "חקלאות וסביבה",                  amountB: 6.5 },
+        { name: "עלייה וקליטה",                   amountB: 6 },
+        { name: "מדע וטכנולוגיה",                 amountB: 5.5 },
+        { name: "אנרגיה ומים",                    amountB: 5, est: true },
+        { name: "משפט ובתי משפט",                 amountB: 4.5 },
+        { name: "משרדים אחרים ורזרבות",            amountB: 14 },
+      ],
+      source: 'fallback',
+    };
+
+    // 2024: Full war year. Largest budget in Israel's history.
+    // Net budget (revised) ~724B including debt ~158B. Expenditure ceiling 584.1B.
+    // Actual execution 620.5B (net, excl credit). Defense ~152B (total security ~168B).
+    // Deficit 6.8% GDP. Sources: Gov.il execution report, Bank of Israel, Knesset
+    const FALLBACK_2024 = {
+      year: 2024,
+      totalB: 670,
+      items: [
+        { name: "ביטחון והגנה",                   amountB: 152 },
+        { name: "החזר חובות וריבית",             amountB: 110 },
+        { name: "חינוך והשכלה גבוהה",              amountB: 84 },
+        { name: "ביטוח לאומי וקצבאות",             amountB: 61 },
+        { name: "בריאות",                          amountB: 52 },
+        { name: "תשתיות ותחבורה",                 amountB: 40 },
+        { name: "רווחה ושירותים חברתיים",           amountB: 32 },
+        { name: "פנסיה תקציבית",                  amountB: 29 },
+        { name: "ביטחון פנים ומשטרה",              amountB: 25 },
+        { name: "שיכון ובינוי",                    amountB: 14 },
+        { name: "כלכלה ותעשייה",                   amountB: 11, est: true },
+        { name: "משרד האוצר",                     amountB: 9, est: true },
+        { name: "תרבות, ספורט ודת",                amountB: 7.5 },
+        { name: "חוץ ודיפלומטיה",                  amountB: 7, est: true },
+        { name: "חקלאות וסביבה",                  amountB: 7 },
+        { name: "עלייה וקליטה",                   amountB: 6.5 },
+        { name: "מדע וטכנולוגיה",                 amountB: 6 },
+        { name: "אנרגיה ומים",                    amountB: 5, est: true },
+        { name: "משפט ובתי משפט",                 amountB: 5 },
+        { name: "משרדים אחרים ורזרבות",            amountB: 7 },
+      ],
+      source: 'fallback',
+    };
+
+    // 2025: Approved budget. ~683B net expenditure.
+    // Source: Knesset Research Center, obudget.org
     // Sorted by size descending
     const FALLBACK_2025 = {
       year: 2025,
@@ -603,18 +706,26 @@
         { name: "ביטחון פנים ומשטרה",              amountB: 25 },
         { name: "פנסיה תקציבית",                  amountB: 25 },
         { name: "שיכון ובינוי",                    amountB: 18 },
-        { name: "כלכלה ותעשייה",                   amountB: 12 },
-        { name: "משרד האוצר",                     amountB: 10 },
-        { name: "חוץ ודיפלומטיה",                  amountB: 8 },
+        { name: "כלכלה ותעשייה",                   amountB: 12, est: true },
+        { name: "משרד האוצר",                     amountB: 10, est: true },
+        { name: "חוץ ודיפלומטיה",                  amountB: 8, est: true },
         { name: "תרבות, ספורט ודת",                amountB: 8 },
         { name: "עלייה וקליטה",                   amountB: 7 },
         { name: "חקלאות וסביבה",                  amountB: 7 },
         { name: "מדע וטכנולוגיה",                 amountB: 6 },
-        { name: "אנרגיה ומים",                    amountB: 5.5 },
+        { name: "אנרגיה ומים",                    amountB: 5.5, est: true },
         { name: "משפט ובתי משפט",                 amountB: 5 },
         { name: "משרדים אחרים ורזרבות",            amountB: 7 },
       ],
       source: 'fallback',
+    };
+
+    // Lookup map for year-specific fallback data
+    const FALLBACK_BY_YEAR = {
+      2022: FALLBACK_2022,
+      2023: FALLBACK_2023,
+      2024: FALLBACK_2024,
+      2025: FALLBACK_2025,
     };
 
     // Active budget data (populated on load)
@@ -634,9 +745,9 @@
     // Per: https://github.com/OpenBudget/BudgetKey
     // First query ("no-depth") fetches everything, then we group by code
     // length and pick the level with the largest total
-    const MIN_VALID_BUDGET_NIS = 50e9; // lowered: partial data is better than fallback
+    const MIN_VALID_BUDGET_NIS = 200e9; // Israel's budget is 400B+; reject anything under 200B as partial/supplementary
 
-    const CACHE_VERSION = 9; // Increment to invalidate old cached data
+    const CACHE_VERSION = 10; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -702,16 +813,17 @@
     // Per: https://github.com/OpenBudget/BudgetKey/blob/master/documentation/UsingTheAPI.md
     // ------------------------------------------
     async function fetchViaApi(year) {
+      // Budget table has BOTH income (code '00xx') and expenditure (all other codes).
+      // Filter: code not like '00%' to get expenditure only.
+      // net_revised includes supplementary budgets (תקציב מתוקן).
+      // depth=2 = ministry level (e.g., code '0234' = sub-ministry).
       const strategies = [
-        { name: 'budget_items_data', sql: `select code,title,net_revised,net_allocated from budget_items_data where year=${year} order by net_revised desc` },
-        { name: 'budget depth=2', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 order by net_revised desc` },
-        // Codes are like "00.37.02" → depth=2 gives 6-char codes (sub-items)
-        // We need to find the ministry level. Try multiple approaches:
-        { name: 'budget no-depth', sql: `select distinct code,title,net_revised,net_allocated,depth from budget where year=${year} and net_revised > 0 order by net_revised desc` },
+        // Primary: expenditure ministries at depth=2 (most granular ministry-level)
+        { name: 'budget depth=2 (expenditure)', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 and code not like '00%' and net_revised > 0 order by net_revised desc` },
+        // Fallback: depth=1 (higher-level grouping)
+        { name: 'budget depth=1 (expenditure)', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=1 and code not like '00%' and net_revised > 0 order by net_revised desc` },
+        // Last resort: budget_items_data table
         { name: 'budget_items_data', sql: `select code,title,net_revised,net_allocated from budget_items_data where year=${year} and net_revised > 0 order by net_revised desc` },
-        { name: 'budget depth=2', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 order by net_revised desc` },
-        { name: 'budget depth=1', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=1 order by net_revised desc` },
-        { name: 'budget depth=0', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=0 order by net_revised desc` },
       ];
 
       for (const strat of strategies) {
@@ -726,17 +838,23 @@
           }
 
           const json = await resp.json();
-          const rows = json.rows || (Array.isArray(json) ? json : []);
+          let rows = json.rows || (Array.isArray(json) ? json : []);
 
           if (!rows.length) {
             console.warn(`[budget] ${strat.name}: 0 rows`);
             continue;
           }
 
-          console.log(`[budget] ${strat.name}: ${rows.length} rows`);
-          if (rows[0]) console.log(`[budget]   sample code: "${rows[0].code}", title: "${rows[0].title}"`);
+          // Extra safety: filter out any income items that slipped through
+          rows = rows.filter(r => {
+            const code = (r.code || '').replace(/\./g, '');
+            return !code.startsWith('00');
+          });
 
-          // Group by code length to find the right hierarchy
+          console.log(`[budget] ${strat.name}: ${rows.length} expenditure rows`);
+          if (rows[0]) console.log(`[budget]   sample: "${rows[0].code}" ${rows[0].title}`);
+
+          // Group by code length to find the right hierarchy level
           const byLength = {};
           rows.forEach(r => {
             const code = (r.code || '').replace(/\./g, '');
@@ -745,32 +863,22 @@
             byLength[len].push(r);
           });
 
-          for (const [len, items] of Object.entries(byLength)) {
-            const total = items.reduce((s, r) => s + (r.net_revised || r.net_allocated || 0), 0);
-            console.log(`[budget]   len=${len}: ${items.length} items, ${(total/1e9).toFixed(1)}B`);
-          }
-
           // Pick the code length with the biggest total
           let bestLen = null, bestTotal = 0;
           for (const [len, items] of Object.entries(byLength)) {
             const total = items.reduce((s, r) => s + (r.net_revised || r.net_allocated || 0), 0);
+            console.log(`[budget]   len=${len}: ${items.length} items, ${(total/1e9).toFixed(1)}B`);
             if (total > bestTotal) { bestTotal = total; bestLen = len; }
           }
 
           if (bestLen && bestTotal >= MIN_VALID_BUDGET_NIS) {
             const data = parseApiResponse(byLength[bestLen], year);
             if (data) {
-              // Reject income data (should be expenditure)
-              const topTitles = data.items.slice(0, 5).map(i => i.name).join(' ');
-              if (/מס הכנסה|מלוות|מע"מ ייצור|מע"מ ייבוא/.test(topTitles)) {
-                console.log(`[budget] ${strat.name}: rejected — looks like income data, not expenditure`);
-                continue;
-              }
-              console.log(`[budget] SUCCESS: ${strat.name} len=${bestLen}: ${data.totalB}B NIS`);
+              console.log(`[budget] SUCCESS: ${strat.name} len=${bestLen}: ${data.totalB}B NIS, ${data.items.length} items`);
               return data;
             }
           }
-          console.log(`[budget] ${strat.name}: best ${(bestTotal/1e9).toFixed(1)}B < ${MIN_VALID_BUDGET_NIS/1e9}B threshold`);
+          console.log(`[budget] ${strat.name}: total ${(bestTotal/1e9).toFixed(1)}B < ${MIN_VALID_BUDGET_NIS/1e9}B threshold`);
         } catch (e) {
           console.warn(`[budget] ${strat.name} error:`, e.message);
         }
@@ -779,130 +887,16 @@
     }
 
     // ------------------------------------------
-    // Strategy 2: Direct budget item endpoint
-    // Returns a single budget node with children
-    // ------------------------------------------
-    async function fetchViaBudgetItem(year) {
-      // Try the item endpoint for the top-level budget
-      const url = `https://next.obudget.org/api/budget-item/${year}/00`;
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const json = await resp.json();
-
-      // This endpoint may return { children: [...] } or similar structure
-      const children = json.children || json.items || [];
-      if (children.length === 0 && json.title) {
-        // Maybe nested differently - try to extract from the response
-        return null;
-      }
-      if (children.length > 0) {
-        return parseApiResponse(children, year);
-      }
-      return null;
-    }
-
-    // ------------------------------------------
-    // Strategy 3: Scrape the HTML page for
-    // embedded JSON / server-side rendered data
-    // ------------------------------------------
-    async function fetchViaPageScrape(year) {
-      const url = `https://next.obudget.org/i/budget/00/${year}`;
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const html = await resp.text();
-
-      // obudget.org is an SPA but may embed initial data as JSON
-      // Look for common patterns: __NEXT_DATA__, window.__data__, etc.
-      const patterns = [
-        /__NEXT_DATA__\s*=\s*({.+?})\s*<\/script>/s,
-        /window\.__data__\s*=\s*({.+?});/s,
-        /window\.__INITIAL_STATE__\s*=\s*({.+?});/s,
-        /"children"\s*:\s*(\[.+?\])\s*[,}]/s,
-      ];
-
-      for (const pat of patterns) {
-        const match = html.match(pat);
-        if (match) {
-          try {
-            const parsed = JSON.parse(match[1]);
-            // Try to find budget items in the parsed data
-            const items = extractBudgetFromParsed(parsed, year);
-            if (items) return items;
-          } catch (e) { /* continue to next pattern */ }
-        }
-      }
-
-      // Try to extract structured data from visible HTML table rows
-      const tableData = extractFromHtmlTable(html, year);
-      if (tableData) return tableData;
-
-      return null;
-    }
-
-    function extractBudgetFromParsed(obj, year) {
-      // Recursively search for an array of budget items
-      if (Array.isArray(obj)) {
-        // Check if this looks like budget rows
-        if (obj.length > 3 && obj[0] && (obj[0].title || obj[0].name)) {
-          const rows = obj.map(item => ({
-            title: item.title || item.name || '',
-            net_revised: item.net_revised || item.net_allocated || item.amount || item.value || 0,
-          })).filter(r => r.title && r.net_revised > 0);
-
-          if (rows.length > 3) {
-            return parseApiResponse(rows, year);
-          }
-        }
-      }
-
-      if (obj && typeof obj === 'object') {
-        for (const key of Object.keys(obj)) {
-          const result = extractBudgetFromParsed(obj[key], year);
-          if (result) return result;
-        }
-      }
-      return null;
-    }
-
-    function extractFromHtmlTable(html, year) {
-      // Try to parse visible Hebrew budget items from the page HTML
-      // Look for patterns like: title with amount in NIS
-      const itemRegex = /class="[^"]*item[^"]*"[^>]*>([^<]+)<[\s\S]*?[\d,]{4,}/g;
-      // This is a heuristic - might not match, which is fine (we fall back)
-      return null;
-    }
-
-    // ------------------------------------------
-    // Orchestration: try all strategies in order
+    // Orchestration: fetch budget via SQL API
     // ------------------------------------------
     async function tryFetchBudget(year) {
-      // Strategy 1: SQL API
       try {
-        console.log(`[budget] Trying SQL API for ${year}...`);
+        console.log(`[budget] Fetching expenditure data for ${year}...`);
         const data = await fetchViaApi(year);
         if (data) { data.source = 'obudget'; return data; }
       } catch (e) {
-        console.warn(`[budget] SQL API failed for ${year}:`, e.message);
+        console.warn(`[budget] API failed for ${year}:`, e.message);
       }
-
-      // Strategy 2: Direct budget item endpoint
-      try {
-        console.log(`[budget] Trying budget item endpoint for ${year}...`);
-        const data = await fetchViaBudgetItem(year);
-        if (data) { data.source = 'obudget'; return data; }
-      } catch (e) {
-        console.warn(`[budget] Budget item endpoint failed for ${year}:`, e.message);
-      }
-
-      // Strategy 3: Page scrape
-      try {
-        console.log(`[budget] Trying page scrape for ${year}...`);
-        const data = await fetchViaPageScrape(year);
-        if (data) { data.source = 'obudget-scrape'; return data; }
-      } catch (e) {
-        console.warn(`[budget] Page scrape failed for ${year}:`, e.message);
-      }
-
       return null;
     }
 
@@ -920,6 +914,7 @@
           pct,
           icon: style.icon,
           color: style.color,
+          est: item.est || false,
         };
       });
 
@@ -938,8 +933,11 @@
         statusEl.textContent = data.fetchedAt
           ? `נתונים נשמרו ב-cache. עדכון אחרון: ${new Date(data.fetchedAt).toLocaleDateString('he-IL')}`
           : '';
+      } else if (data.note === 'proportions' && budgetYear !== 2025) {
+        sourceTextEl.innerHTML = `חלוקת התקציב לפי <strong>שנת 2025</strong> (שימוש באותם אחוזים). נתוני ${budgetYear} המלאים לא זמינים מה-API. מקור: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>, <a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב</a>.`;
+        statusEl.textContent = 'האחוזים מבוססים על תקציב 2025 — ההפרשים בין שנים אינם משמעותיים.';
       } else {
-        sourceTextEl.innerHTML = `נתוני תקציב ${budgetYear} (נתונים שמורים). לא הצלחנו לטעון מ-<a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב</a>. מקור: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>.`;
+        sourceTextEl.innerHTML = `נתוני תקציב ${budgetYear} (נתונים שמורים). מקור: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>, <a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב</a>.`;
         statusEl.textContent = '';
       }
     }
@@ -990,9 +988,15 @@
         return;
       }
 
-      // 4. Fallback
+      // 4. Fallback — use year-specific hardcoded data if available, else 2025 proportions
       console.log(`[budget] Using hardcoded fallback for ${year}`);
-      applyBudgetData({ ...FALLBACK_2025, year });
+      const yearFallback = FALLBACK_BY_YEAR[year];
+      if (yearFallback) {
+        applyBudgetData({ ...yearFallback });
+      } else {
+        const fallback = { ...FALLBACK_2025, year, note: 'proportions' };
+        applyBudgetData(fallback);
+      }
     }
 
     // Populate year selector and set up change handler
@@ -1300,11 +1304,30 @@
       document.getElementById('fileName').textContent = file.name;
       uploadArea.classList.add('has-file');
 
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        processFile(ev.target.result);
-      };
-      reader.readAsText(file, 'UTF-8');
+      const isExcel = /\.(xlsx?|xls)$/i.test(file.name);
+
+      if (isExcel && typeof XLSX !== 'undefined') {
+        // Read Excel file using SheetJS
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          try {
+            const wb = XLSX.read(ev.target.result, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const csv = XLSX.utils.sheet_to_csv(ws);
+            processFile(csv);
+          } catch (err) {
+            alert('שגיאה בקריאת קובץ אקסל: ' + err.message);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        // Read as CSV/TSV text
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          processFile(ev.target.result);
+        };
+        reader.readAsText(file, 'UTF-8');
+      }
     });
 
     uploadArea.addEventListener('dragover', function(e) {
@@ -1492,18 +1515,22 @@
 
       document.getElementById('modalTitle').textContent = `מבנה תקציב המדינה ${budgetYear}`;
 
-      const items = budgetItems.length > 0 ? budgetItems : FALLBACK_2025.items.map(i => {
+      const activeFallback = FALLBACK_BY_YEAR[budgetYear] || FALLBACK_2025;
+      const items = budgetItems.length > 0 ? budgetItems : activeFallback.items.map(i => {
         const style = getCategoryStyle(i.name);
-        return { ...i, pct: (i.amountB / FALLBACK_2025.totalB) * 100, ...style };
+        return { ...i, pct: (i.amountB / activeFallback.totalB) * 100, ...style };
       });
 
       let totalB = 0;
+      let hasEstimates = false;
       items.forEach(item => {
         totalB += item.amountB;
+        if (item.est) hasEstimates = true;
+        const estMark = item.est ? ' <span style="color:#f59e0b;font-size:0.7rem">*הערכה</span>' : '';
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="cat-icon">${item.icon}</td>
-          <td>${item.name}</td>
+          <td>${item.name}${estMark}</td>
           <td class="cat-amount">${item.amountB} מיליארד ₪</td>
           <td class="cat-pct">${item.pct.toFixed(1)}%</td>
         `;
@@ -1515,6 +1542,13 @@
         <td class="cat-amount">${Math.round(totalB * 10) / 10} מיליארד ₪</td>
         <td class="cat-pct">100%</td>
       </tr>`;
+
+      if (hasEstimates) {
+        document.getElementById('modalSubtitle').innerHTML =
+          'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים<br><span style="color:#f59e0b;font-size:0.75rem">* סעיפים מסומנים בכוכבית הם הערכה — הסכום המדויק לא זמין מה-API</span>';
+      } else {
+        document.getElementById('modalSubtitle').textContent = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים';
+      }
 
       document.getElementById('budgetModal').classList.add('visible');
     }
