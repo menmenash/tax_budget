@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.15">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>לאן הולך הכסף שלך? - מחשבון תקציב המדינה</title>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
@@ -60,8 +60,18 @@
     }
 
     @media (max-width: 600px) {
-      .input-group { grid-template-columns: 1fr; }
-      h1 { font-size: 1.5rem; }
+      body { font-size: 1.05rem; }
+      .container { padding: 1.25rem 0.75rem; }
+      h1 { font-size: 1.6rem; }
+      .subtitle { font-size: 0.95rem; }
+      .input-section { padding: 1.25rem; }
+      .input-section h2 { font-size: 1.1rem; }
+      .input-group { grid-template-columns: 1fr; gap: 1rem; }
+      .field label { font-size: 0.95rem; }
+      .field input[type="text"] { font-size: 1.1rem; padding: 0.7rem 0.85rem; }
+      .upload-area { padding: 1rem; }
+      .upload-text { font-size: 0.85rem; }
+      .btn-calc { font-size: 1.1rem; padding: 0.9rem; }
     }
 
     .field {
@@ -238,6 +248,17 @@
 
     @media (max-width: 600px) {
       .budget-grid { grid-template-columns: 1fr; }
+      .total-banner { padding: 1.25rem; }
+      .total-banner .amount { font-size: 2rem; }
+      .tax-breakdown-banner { gap: 1rem; }
+      .budget-card { padding: 1rem; }
+      .card-amount { font-size: 1.3rem; }
+      .modal { padding: 1.25rem; max-height: 90vh; }
+      .modal h3 { font-size: 1.1rem; }
+      .budget-table { font-size: 0.82rem; }
+      .budget-table th { padding: 0.3rem 0.2rem; }
+      .budget-table td { padding: 0.3rem 0.2rem; }
+      .budget-table tr .tooltip { right: 0; left: 0; max-width: none; font-size: 0.8rem; }
     }
 
     .budget-card {
