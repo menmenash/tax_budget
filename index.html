@@ -1624,12 +1624,29 @@
         const tip = getTooltip(item.name);
         if (tip) {
           card.style.cursor = 'pointer';
+          const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
           card.addEventListener('click', () => {
-            grid.querySelectorAll('.budget-card').forEach(c => c.style.borderColor = '#334155');
-            card.style.borderColor = item.color;
-            cardDescTitle.textContent = item.name + ':';
-            cardDescText.textContent = tip;
-            cardDescBox.style.display = 'block';
+            if (isTouchDevice) {
+              // Mobile: toggle inline description inside the card
+              const existing = card.querySelector('.card-desc');
+              // Remove all other inline descriptions
+              grid.querySelectorAll('.card-desc').forEach(d => d.remove());
+              grid.querySelectorAll('.budget-card').forEach(c => c.style.borderColor = '#334155');
+              if (existing) return; // was open, now closed
+              card.style.borderColor = item.color;
+              const descDiv = document.createElement('div');
+              descDiv.className = 'card-desc';
+              descDiv.style.cssText = 'margin-top:0.5rem;padding:0.5rem 0.6rem;background:#0f172a;border-radius:8px;font-size:0.8rem;color:#cbd5e1;line-height:1.5;border:1px solid #475569';
+              descDiv.textContent = tip;
+              card.appendChild(descDiv);
+            } else {
+              // Desktop click: also show in top box
+              grid.querySelectorAll('.budget-card').forEach(c => c.style.borderColor = '#334155');
+              card.style.borderColor = item.color;
+              cardDescTitle.textContent = item.name + ':';
+              cardDescText.textContent = tip;
+              cardDescBox.style.display = 'block';
+            }
           });
           card.addEventListener('mouseenter', () => {
             cardDescTitle.textContent = item.name + ':';
