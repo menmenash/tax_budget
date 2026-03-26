@@ -409,7 +409,7 @@
     .budget-table .cat-pct { color: #64748b; font-size: 0.8rem; text-align: left; direction: ltr; width: 3rem; padding-left: 0; }
     .budget-table tr.supp-row { background: rgba(96,165,250,0.06); }
 
-    .budget-table tr { position: relative; cursor: default; }
+    .budget-table tr { position: relative; cursor: pointer; }
     .budget-table tr .tooltip {
       display: none;
       position: absolute;
@@ -426,8 +426,10 @@
       max-width: 300px;
       line-height: 1.5;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      pointer-events: none;
     }
     .budget-table tr:hover .tooltip { display: block; }
+    .budget-table tr .tooltip.active { display: block; }
   </style>
 </head>
 <body>
@@ -1658,7 +1660,21 @@
         <td class="cat-pct">100%</td>
       </tr>`;
 
-      document.getElementById('modalSubtitle').textContent = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים';
+      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      document.getElementById('modalSubtitle').innerHTML = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים'
+        + (isMobile ? '<br><span style="font-size:0.75rem;color:#64748b">לחץ על סעיף לפירוט</span>' : '');
+
+      // Mobile: tap to toggle tooltip
+      tbody.querySelectorAll('tr').forEach(tr => {
+        tr.addEventListener('click', () => {
+          const tip = tr.querySelector('.tooltip');
+          if (!tip) return;
+          const wasActive = tip.classList.contains('active');
+          // Close all open tooltips
+          tbody.querySelectorAll('.tooltip.active').forEach(t => t.classList.remove('active'));
+          if (!wasActive) tip.classList.add('active');
+        });
+      });
 
       const srcLine = document.getElementById('modalSourceLine');
       if (budgetSource === 'obudget') {
@@ -1666,6 +1682,13 @@
       } else {
         srcLine.innerHTML = `מקור: <a href="https://next.obudget.org" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a>, <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener" style="color:#60a5fa">אתר הכנסת</a>`;
       }
+
+      // Close tooltips when clicking modal background
+      document.getElementById('budgetModal').addEventListener('click', (e) => {
+        if (!e.target.closest('tr')) {
+          document.querySelectorAll('.tooltip.active').forEach(t => t.classList.remove('active'));
+        }
+      });
 
       document.getElementById('budgetModal').classList.add('visible');
     }
