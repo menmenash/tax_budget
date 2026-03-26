@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>לאן הולך הכסף שלך? - מחשבון תקציב המדינה</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -603,14 +604,14 @@
         { name: "ביטחון פנים ומשטרה",              amountB: 25 },
         { name: "פנסיה תקציבית",                  amountB: 25 },
         { name: "שיכון ובינוי",                    amountB: 18 },
-        { name: "כלכלה ותעשייה",                   amountB: 12 },
-        { name: "משרד האוצר",                     amountB: 10 },
-        { name: "חוץ ודיפלומטיה",                  amountB: 8 },
+        { name: "כלכלה ותעשייה",                   amountB: 12, est: true },
+        { name: "משרד האוצר",                     amountB: 10, est: true },
+        { name: "חוץ ודיפלומטיה",                  amountB: 8, est: true },
         { name: "תרבות, ספורט ודת",                amountB: 8 },
         { name: "עלייה וקליטה",                   amountB: 7 },
         { name: "חקלאות וסביבה",                  amountB: 7 },
         { name: "מדע וטכנולוגיה",                 amountB: 6 },
-        { name: "אנרגיה ומים",                    amountB: 5.5 },
+        { name: "אנרגיה ומים",                    amountB: 5.5, est: true },
         { name: "משפט ובתי משפט",                 amountB: 5 },
         { name: "משרדים אחרים ורזרבות",            amountB: 7 },
       ],
@@ -634,7 +635,7 @@
     // Per: https://github.com/OpenBudget/BudgetKey
     // First query ("no-depth") fetches everything, then we group by code
     // length and pick the level with the largest total
-    const MIN_VALID_BUDGET_NIS = 50e9; // lowered: partial data is better than fallback
+    const MIN_VALID_BUDGET_NIS = 200e9; // Israel's budget is 400B+; reject anything under 200B as partial/supplementary
 
     const CACHE_VERSION = 9; // Increment to invalidate old cached data
 
@@ -920,6 +921,7 @@
           pct,
           icon: style.icon,
           color: style.color,
+          est: item.est || false,
         };
       });
 
@@ -938,8 +940,11 @@
         statusEl.textContent = data.fetchedAt
           ? `נתונים נשמרו ב-cache. עדכון אחרון: ${new Date(data.fetchedAt).toLocaleDateString('he-IL')}`
           : '';
+      } else if (data.note === 'proportions' && budgetYear !== 2025) {
+        sourceTextEl.innerHTML = `חלוקת התקציב לפי <strong>שנת 2025</strong> (שימוש באותם אחוזים). נתוני ${budgetYear} המלאים לא זמינים מה-API. מקור: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>, <a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב</a>.`;
+        statusEl.textContent = 'האחוזים מבוססים על תקציב 2025 — ההפרשים בין שנים אינם משמעותיים.';
       } else {
-        sourceTextEl.innerHTML = `נתוני תקציב ${budgetYear} (נתונים שמורים). לא הצלחנו לטעון מ-<a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב</a>. מקור: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>.`;
+        sourceTextEl.innerHTML = `נתוני תקציב ${budgetYear} (נתונים שמורים). מקור: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>, <a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב</a>.`;
         statusEl.textContent = '';
       }
     }
@@ -990,9 +995,13 @@
         return;
       }
 
-      // 4. Fallback
+      // 4. Fallback — use 2025 data as the proportional reference
       console.log(`[budget] Using hardcoded fallback for ${year}`);
-      applyBudgetData({ ...FALLBACK_2025, year });
+      const fallback = { ...FALLBACK_2025, year };
+      if (year !== 2025) {
+        fallback.note = 'proportions';
+      }
+      applyBudgetData(fallback);
     }
 
     // Populate year selector and set up change handler
@@ -1300,11 +1309,30 @@
       document.getElementById('fileName').textContent = file.name;
       uploadArea.classList.add('has-file');
 
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        processFile(ev.target.result);
-      };
-      reader.readAsText(file, 'UTF-8');
+      const isExcel = /\.(xlsx?|xls)$/i.test(file.name);
+
+      if (isExcel && typeof XLSX !== 'undefined') {
+        // Read Excel file using SheetJS
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          try {
+            const wb = XLSX.read(ev.target.result, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const csv = XLSX.utils.sheet_to_csv(ws);
+            processFile(csv);
+          } catch (err) {
+            alert('שגיאה בקריאת קובץ אקסל: ' + err.message);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        // Read as CSV/TSV text
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          processFile(ev.target.result);
+        };
+        reader.readAsText(file, 'UTF-8');
+      }
     });
 
     uploadArea.addEventListener('dragover', function(e) {
@@ -1498,12 +1526,15 @@
       });
 
       let totalB = 0;
+      let hasEstimates = false;
       items.forEach(item => {
         totalB += item.amountB;
+        if (item.est) hasEstimates = true;
+        const estMark = item.est ? ' <span style="color:#f59e0b;font-size:0.7rem">*הערכה</span>' : '';
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="cat-icon">${item.icon}</td>
-          <td>${item.name}</td>
+          <td>${item.name}${estMark}</td>
           <td class="cat-amount">${item.amountB} מיליארד ₪</td>
           <td class="cat-pct">${item.pct.toFixed(1)}%</td>
         `;
@@ -1515,6 +1546,13 @@
         <td class="cat-amount">${Math.round(totalB * 10) / 10} מיליארד ₪</td>
         <td class="cat-pct">100%</td>
       </tr>`;
+
+      if (hasEstimates) {
+        document.getElementById('modalSubtitle').innerHTML =
+          'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים<br><span style="color:#f59e0b;font-size:0.75rem">* סעיפים מסומנים בכוכבית הם הערכה — הסכום המדויק לא זמין מה-API</span>';
+      } else {
+        document.getElementById('modalSubtitle').textContent = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים';
+      }
 
       document.getElementById('budgetModal').classList.add('visible');
     }
