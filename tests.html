@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Tax Budget Calculator Tests</title>
+  <style>
+    body { font-family: monospace; background: #0f172a; color: #e2e8f0; padding: 1rem; }
+    .pass { color: #4ade80; }
+    .fail { color: #f87171; }
+    .section { color: #93c5fd; font-weight: bold; margin-top: 1rem; }
+    #results { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h2>Tax Budget Calculator — Tests</h2>
+  <div id="results"></div>
+
+  <!-- Load the app's script functions by inlining the test-relevant parts -->
+  <script>
+    const out = document.getElementById('results');
+    let passed = 0, failed = 0;
+
+    function section(name) {
+      out.innerHTML += `\n<span class="section">▸ ${name}</span>\n`;
+    }
+
+    function assert(name, condition) {
+      if (condition) {
+        out.innerHTML += `<span class="pass">  ✓ ${name}</span>\n`;
+        passed++;
+      } else {
+        out.innerHTML += `<span class="fail">  ✗ ${name}</span>\n`;
+        failed++;
+      }
+    }
+
+    function assertClose(name, actual, expected, tolerance = 0.01) {
+      assert(`${name} (${actual} ≈ ${expected})`, Math.abs(actual - expected) <= tolerance);
+    }
+
+    // ==========================================
+    // Import functions from the main app
+    // (copied here for testing — in a real setup, use modules)
+    // ==========================================
+
+    function parseAmount(val) {
+      if (!val) return 0;
+      let s = val.replace(/[^\d,.\-]/g, '');
+      if (!s) return 0;
+      if (s.includes(',') && s.includes('.')) {
+        const lastComma = s.lastIndexOf(',');
+        const lastDot = s.lastIndexOf('.');
+        if (lastComma > lastDot) {
+          s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+          s = s.replace(/,/g, '');
+        }
+      } else if (s.includes(',')) {
+        const match = s.match(/,(\d{1,2})$/);
+        if (match) {
+          s = s.replace(/,(?=\d{1,2}$)/, '.').replace(/,/g, '');
+        } else {
+          s = s.replace(/,/g, '');
+        }
+      }
+      return parseFloat(s) || 0;
+    }
+
+    function calcBrackets(amount, brackets) {
+      let tax = 0, prev = 0;
+      for (const b of brackets) {
+        if (amount <= prev) break;
+        const taxable = Math.min(amount, b.upto) - prev;
+        tax += taxable * b.rate;
+        prev = b.upto;
+      }
+      return Math.round(tax);
+    }
+
+    function calcPropertyTax(price, type) {
+      if (type === 'single') {
+        return calcBrackets(price, [
+          { upto: 1978745, rate: 0 },
+          { upto: 2347040, rate: 0.035 },
+          { upto: 6055070, rate: 0.05 },
+          { upto: 20183560, rate: 0.08 },
+          { upto: Infinity, rate: 0.10 },
+        ]);
+      } else {
+        return calcBrackets(price, [
+          { upto: 6055070, rate: 0.08 },
+          { upto: 20183560, rate: 0.10 },
+          { upto: Infinity, rate: 0.10 },
+        ]);
+      }
+    }
+
+    function extractYear(dateStr) {
+      if (!dateStr) return null;
+      const match4 = dateStr.match(/\b(20\d{2})\b/);
+      if (match4) return parseInt(match4[1]);
+      return null;
+    }
+
+    const VAT_EXEMPT_KEYWORDS = [
+      'שכר דירה', 'שכ"ד', 'שכד', 'שכירות', 'דמי שכירות', 'rent',
+      'משכנתא', 'הלוואה', 'ארנונה', 'עיריי', 'ביטוח לאומי', 'ביטוח',
+      'חינוך', 'שכר לימוד', 'קופת חולים', 'מכבי', 'כללית',
+      'העברה', 'הפקדה', 'הוראת קבע',
+      'bit', 'ביט', 'paybox', 'חיסכון', 'פנסיה',
+      'מס הכנסה', 'מע"מ', 'אגרה', 'תרומה', 'משכורת',
+    ];
+
+    const FOREIGN_KEYWORDS = [
+      'amazon.com', 'aliexpress', 'netflix', 'paypal', 'חו"ל',
+    ];
+
+    const CARD_COMPANIES = [
+      'isracard', 'ישראכרט', 'leumicard', 'לאומי קארד',
+      'max', 'מקס', 'cal', 'כאל', 'visa', 'ויזה',
+    ];
+
+    function isNotPurchase(text, method) {
+      const lower = text.toLowerCase();
+      if (VAT_EXEMPT_KEYWORDS.some(kw => lower.includes(kw))) return true;
+      const methodLower = method.toLowerCase().trim();
+      if (methodLower) {
+        const isCard = CARD_COMPANIES.some(cc => methodLower.includes(cc));
+        if (!isCard) return true;
+      }
+      if (FOREIGN_KEYWORDS.some(kw => lower.includes(kw))) return true;
+      return false;
+    }
+
+    // ==========================================
+    // Tests
+    // ==========================================
+
+    section('parseAmount — Israeli format');
+    assertClose('Standard integer', parseAmount('45,000'), 45000);
+    assertClose('Decimal comma (Israeli)', parseAmount('125,50'), 125.50);
+    assertClose('European with dot thousands', parseAmount('1.234,56'), 1234.56);
+    assertClose('US format', parseAmount('1,234.56'), 1234.56);
+    assertClose('Negative', parseAmount('-500'), -500);
+    assertClose('Currency prefix', parseAmount('₪12,345'), 12345);
+    assertClose('Empty', parseAmount(''), 0);
+    assertClose('Null', parseAmount(null), 0);
+    assertClose('Spaces', parseAmount('  45 000  '), 45000);
+
+    section('extractYear');
+    assert('ISO date', extractYear('2025-01-15') === 2025);
+    assert('DD/MM/YYYY', extractYear('15/01/2024') === 2024);
+    assert('DD.MM.YYYY', extractYear('15.01.2023') === 2023);
+    assert('Year only', extractYear('2022') === 2022);
+    assert('No year', extractYear('hello') === null);
+    assert('Null', extractYear(null) === null);
+    assert('Empty', extractYear('') === null);
+
+    section('calcPropertyTax — single apartment');
+    assert('Below first bracket (1.5M) = 0', calcPropertyTax(1500000, 'single') === 0);
+    assert('At first bracket (1978745) = 0', calcPropertyTax(1978745, 'single') === 0);
+    assertClose('2M single', calcPropertyTax(2000000, 'single'), 744, 1);
+    assertClose('3M single', calcPropertyTax(3000000, 'single'), 45480, 1);
+
+    section('calcPropertyTax — investment apartment');
+    assert('1M investment = 80000', calcPropertyTax(1000000, 'investment') === 80000);
+    assertClose('3M investment', calcPropertyTax(3000000, 'investment'), 240000, 1);
+
+    section('isNotPurchase — VAT exemptions');
+    assert('Rent excluded', isNotPurchase('שכר דירה ינואר', 'ישראכרט'));
+    assert('Mortgage excluded', isNotPurchase('משכנתא', 'ישראכרט'));
+    assert('Insurance excluded', isNotPurchase('ביטוח רכב', 'ישראכרט'));
+    assert('Arnona excluded', isNotPurchase('ארנונה', 'ישראכרט'));
+    assert('BIT excluded', isNotPurchase('bit', 'ישראכרט'));
+    assert('Health fund excluded', isNotPurchase('קופת חולים מכבי', 'ישראכרט'));
+    assert('Regular purchase included', !isNotPurchase('שופרסל', 'ישראכרט'));
+    assert('Restaurant included', !isNotPurchase('מסעדה', 'max'));
+
+    section('isNotPurchase — payment method');
+    assert('Bank transfer excluded', isNotPurchase('שופרסל', 'העברה בנקאית'));
+    assert('No method = excluded', isNotPurchase('שופרסל', ''));
+    assert('Card = included', !isNotPurchase('שופרסל', 'ישראכרט'));
+    assert('Cal = included', !isNotPurchase('שופרסל', 'כאל'));
+
+    section('isNotPurchase — foreign transactions');
+    assert('Amazon excluded', isNotPurchase('amazon.com', 'visa'));
+    assert('Netflix excluded', isNotPurchase('netflix', 'ישראכרט'));
+    assert('PayPal excluded', isNotPurchase('paypal', 'visa'));
+
+    section('Vehicle purchase tax');
+    const vehiclePrice = 180000;
+    const vehicleBase = vehiclePrice / 2.1594;
+    const vehicleTax = Math.round(vehicleBase * 0.83);
+    assertClose('180K car tax', vehicleTax, 69189, 100);
+    assert('Tax > 0', vehicleTax > 0);
+    assert('Tax < price', vehicleTax < vehiclePrice);
+
+    section('VAT calculation');
+    const expenses = 100000;
+    const vat = expenses * (18 / 118);
+    assertClose('100K expenses → VAT', vat, 15254, 1);
+
+    section('Fuel excise');
+    const fuelCost = 5000;
+    const excise = fuelCost * 0.50;
+    assertClose('5K fuel → excise', excise, 2500);
+
+    section('Fallback data integrity');
+    // Load fallback data from the main page (we'll fetch and parse it)
+    fetch('index.html').then(r => r.text()).then(html => {
+      const years = [2021, 2022, 2023, 2024, 2025];
+      years.forEach(year => {
+        const match = html.match(new RegExp(`FALLBACK_${year}\\s*=\\s*\\{[\\s\\S]*?totalB:\\s*(\\d+)`));
+        if (!match) { assert(`FALLBACK_${year} exists`, false); return; }
+        const declaredTotal = parseInt(match[1]);
+
+        // Extract all amountB values
+        const blockStart = html.indexOf(`FALLBACK_${year} = {`);
+        const blockEnd = html.indexOf("source: 'fallback'", blockStart);
+        const block = html.substring(blockStart, blockEnd);
+        const amounts = [...block.matchAll(/amountB:\s*([\d.]+)/g)].map(m => parseFloat(m[1]));
+        const itemsTotal = amounts.reduce((s, a) => s + a, 0);
+
+        assertClose(`FALLBACK_${year} total ${declaredTotal}B = items sum ${itemsTotal.toFixed(1)}B`, itemsTotal, declaredTotal, 1);
+        assert(`FALLBACK_${year} has 20+ items`, amounts.length >= 20);
+        assert(`FALLBACK_${year} items sorted desc`, amounts[0] >= amounts[amounts.length - 1]);
+      });
+
+      // Final summary
+      out.innerHTML += `\n<span class="section">━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>\n`;
+      out.innerHTML += `<span class="${failed ? 'fail' : 'pass'}">Results: ${passed} passed, ${failed} failed</span>\n`;
+    }).catch(e => {
+      out.innerHTML += `\n<span class="fail">Could not load index.html for fallback tests: ${e.message}</span>\n`;
+      out.innerHTML += `\n<span class="section">━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>\n`;
+      out.innerHTML += `<span class="${failed ? 'fail' : 'pass'}">Results: ${passed} passed, ${failed} failed</span>\n`;
+    });
+  </script>
+</body>
+</html>

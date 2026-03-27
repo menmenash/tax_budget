@@ -37,6 +37,7 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html _site/
+          cp tests.html _site/ 2>/dev/null || true
           cp budget-data-*.json _site/ 2>/dev/null || true
 
       - name: Setup Pages
