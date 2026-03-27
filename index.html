@@ -528,7 +528,9 @@
 
       <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:1.5rem">
         <button class="btn-calc" style="flex:1;min-width:200px" onclick="calculate()">חשב את התרומה שלי לתקציב</button>
-        <button class="btn-budget-info" onclick="showBudgetModal()">מבנה התקציב</button>
+      </div>
+      <div style="text-align:center;margin-top:0.75rem">
+        <button class="btn-budget-info" id="btnBudgetInfo" onclick="showBudgetModal()">מבנה תקציב</button>
       </div>
     </div>
 
@@ -824,6 +826,10 @@
     function applyBudgetData(data) {
       budgetYear = data.year;
       budgetSource = data.source;
+
+      // Update budget button text with selected year
+      const btnInfo = document.getElementById('btnBudgetInfo');
+      if (btnInfo) btnInfo.textContent = `מבנה תקציב ${budgetYear}`;
 
       const totalB = data.totalB;
       budgetItems = data.items.map(item => {
