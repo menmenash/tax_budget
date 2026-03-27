@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>לאן הולך הכסף שלך? - מחשבון תקציב המדינה</title>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -584,9 +583,10 @@
 
   <script>
     // ==========================================
-    // Budget Data: Dynamic loading from obudget.org
-    // with localStorage cache per year + hardcoded fallback
+    // Budget Data: static JSON + fallback
     // ==========================================
+
+    const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
     // Icon/color mapping for budget categories by keyword in title
     const CATEGORY_STYLE = [
@@ -622,7 +622,6 @@
       return { icon: '📊', color: '#475569' };
     }
 
-    // Fallback data for 2025 (used when API is unavailable)
     // ==========================================
     // Hardcoded fallback budget data by year
     // Sources: Knesset Research Center, Bank of Israel annual reports,
@@ -817,8 +816,6 @@
         if (!raw) return null;
         const cached = JSON.parse(raw);
         if (cached && cached.year === year && cached.items && cached.items.length > 0) {
-          // Validate cached data is a real national budget (not a sub-ministry)
-          if (cached.totalNIS && cached.totalNIS < MIN_VALID_BUDGET_NIS) return null;
           return cached;
         }
       } catch (e) { /* ignore */ }
@@ -858,9 +855,8 @@
       const statusEl = document.getElementById('dataStatus');
       const obudgetLink = `https://next.obudget.org/i/budget/00/${budgetYear}`;
 
-      if (data.source === 'obudget' || data.source === 'obudget-scrape') {
-        const method = data.source === 'obudget-scrape' ? ' (מהדף)' : '';
-        sourceTextEl.innerHTML = `נתוני תקציב המדינה לשנת <strong>${budgetYear}</strong> (~${totalB} מיליארד ש״ח) נטענו אוטומטית מ<a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב (obudget.org)</a>${method}.`;
+      if (data.source === 'obudget') {
+        sourceTextEl.innerHTML = `נתוני תקציב המדינה לשנת <strong>${budgetYear}</strong> (~${totalB} מיליארד ש״ח) נטענו מ<a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב (obudget.org)</a>.`;
         statusEl.textContent = data.fetchedAt
           ? `נתונים נשמרו ב-cache. עדכון אחרון: ${new Date(data.fetchedAt).toLocaleDateString('he-IL')}`
           : '';
@@ -1221,22 +1217,33 @@
 
       const isExcel = /\.(xlsx?|xls)$/i.test(file.name);
 
-      if (isExcel && typeof XLSX !== 'undefined') {
-        // Read Excel file using SheetJS
-        const reader = new FileReader();
-        reader.onload = function(ev) {
-          try {
-            const wb = XLSX.read(ev.target.result, { type: 'array' });
-            const ws = wb.Sheets[wb.SheetNames[0]];
-            const csv = XLSX.utils.sheet_to_csv(ws);
-            processFile(csv);
-          } catch (err) {
-            alert('שגיאה בקריאת קובץ אקסל: ' + err.message);
-          }
+      if (isExcel) {
+        // Lazy-load SheetJS only when needed (saves ~500KB on initial page load)
+        const loadAndParse = () => {
+          const reader = new FileReader();
+          reader.onload = function(ev) {
+            try {
+              const wb = XLSX.read(ev.target.result, { type: 'array' });
+              const ws = wb.Sheets[wb.SheetNames[0]];
+              const csv = XLSX.utils.sheet_to_csv(ws);
+              processFile(csv);
+            } catch (err) {
+              alert('שגיאה בקריאת קובץ אקסל: ' + err.message);
+            }
+          };
+          reader.readAsArrayBuffer(file);
         };
-        reader.readAsArrayBuffer(file);
+
+        if (typeof XLSX !== 'undefined') {
+          loadAndParse();
+        } else {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+          script.onload = loadAndParse;
+          script.onerror = () => alert('לא הצלחנו לטעון את ספריית קריאת אקסל. נסה קובץ CSV.');
+          document.head.appendChild(script);
+        }
       } else {
-        // Read as CSV/TSV text
         const reader = new FileReader();
         reader.onload = function(ev) {
           processFile(ev.target.result);
@@ -1449,7 +1456,7 @@
         const tip = getTooltip(item.name);
         if (tip) {
           card.style.cursor = 'pointer';
-          const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+          const isTouchDevice = IS_TOUCH;
           card.addEventListener('click', () => {
             if (isTouchDevice) {
               // Mobile: toggle inline description inside the card
@@ -1484,7 +1491,7 @@
 
       // Desktop: hide description when mouse leaves grid
       grid.addEventListener('mouseleave', () => {
-        if (!('ontouchstart' in window)) {
+        if (!IS_TOUCH) {
           cardDescBox.style.display = 'none';
           grid.querySelectorAll('.budget-card').forEach(c => c.style.borderColor = '#334155');
         }
@@ -1549,7 +1556,7 @@
 
       // Hide description when mouse leaves table (desktop)
       document.getElementById('budgetTable').addEventListener('mouseleave', () => {
-        if (!('ontouchstart' in window)) {
+        if (!IS_TOUCH) {
           descBox.style.display = 'none';
           tbody.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
         }
@@ -1561,7 +1568,7 @@
         <td class="cat-pct">100%</td>
       </tr>`;
 
-      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isMobile = IS_TOUCH;
       document.getElementById('modalSubtitle').innerHTML = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים'
         + '<br><span style="font-size:0.75rem;color:#64748b">'
         + (isMobile ? 'לחץ על סעיף לפירוט' : 'העבר מעל סעיף לפירוט')
