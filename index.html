@@ -1092,6 +1092,7 @@
     }
 
     function processFile(text) {
+      if (typeof goatcounter !== 'undefined') goatcounter.count({ path: 'upload-file', event: true });
       const { headers, rows } = parseCSV(text);
       if (!headers.length || !rows.length) {
         alert('לא הצלחנו לקרוא את הקובץ. ודא שזהו קובץ CSV תקין.');
@@ -1490,12 +1491,16 @@
 
       document.getElementById('results').classList.add('visible');
       document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+
+      // Analytics: track calculation (no user data sent)
+      if (typeof goatcounter !== 'undefined') goatcounter.count({ path: 'calculate', event: true });
     }
 
     // ==========================================
     // Budget Structure Modal
     // ==========================================
     function showBudgetModal() {
+      if (typeof goatcounter !== 'undefined') goatcounter.count({ path: 'view-budget', event: true });
       const tbody = document.getElementById('budgetTableBody');
       const tfoot = document.getElementById('budgetTableFoot');
       tbody.innerHTML = '';
@@ -1581,5 +1586,7 @@
       if (e.key === 'Escape') closeBudgetModal();
     });
   </script>
+  <script data-goatcounter="https://tax-budget-il.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
