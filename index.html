@@ -585,12 +585,25 @@
 
   <!-- Footer -->
   <footer style="max-width:900px;margin:0 auto;padding:1rem;text-align:center;font-size:0.75rem;color:#475569;line-height:2">
-    <a href="mailto:menash.lando@gmail.com" style="color:#64748b;text-decoration:none">צור קשר</a>
+    <a href="#contact" onclick="document.getElementById('contactModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">צור קשר</a>
     <span style="margin:0 0.4rem">·</span>
     <a href="#privacy" onclick="document.getElementById('privacyModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">מדיניות פרטיות</a>
     <span style="margin:0 0.4rem">·</span>
     <a href="#accessibility" onclick="document.getElementById('a11yModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">הצהרת נגישות</a>
   </footer>
+
+  <!-- Contact Modal -->
+  <div class="modal-overlay" id="contactModal" onclick="if(event.target===this)this.classList.remove('visible')">
+    <div class="modal" style="max-width:550px">
+      <button class="modal-close" onclick="document.getElementById('contactModal').classList.remove('visible')">&times;</button>
+      <h3 style="color:#93c5fd;margin-bottom:1rem">צור קשר</h3>
+      <div style="font-size:0.85rem;color:#cbd5e1;line-height:1.8">
+        <p>מטרת המחשבון היא לקדם בציבור תחושת אחריות ושותפות בנטל — מהצד הפיננסי. המטרה הנוספת היא מודעות אזרחית.</p>
+        <p style="margin-top:0.75rem">לשאלות, הצעות או הערות:</p>
+        <p><a href="mailto:menash.lando@gmail.com" style="color:#60a5fa;font-size:1rem">menash.lando@gmail.com</a></p>
+      </div>
+    </div>
+  </div>
 
   <!-- Privacy Modal -->
   <div class="modal-overlay" id="privacyModal" onclick="if(event.target===this)this.classList.remove('visible')">
@@ -598,11 +611,10 @@
       <button class="modal-close" onclick="document.getElementById('privacyModal').classList.remove('visible')">&times;</button>
       <h3 style="color:#93c5fd;margin-bottom:1rem">מדיניות פרטיות</h3>
       <div style="font-size:0.85rem;color:#cbd5e1;line-height:1.8">
-        <p><strong>אנחנו לא אוספים מידע אישי.</strong></p>
+        <p><strong>אנחנו לא אוספים מידע אישי, או מידע שמוזן/מתקבל כלל.</strong></p>
         <p>כל הנתונים שאתה מזין (מיסים, הוצאות, רכישות) מעובדים בדפדפן שלך בלבד ולא נשלחים לשום שרת.</p>
         <p>האתר משתמש ב-<a href="https://www.goatcounter.com" target="_blank" rel="noopener" style="color:#60a5fa">GoatCounter</a> לסטטיסטיקת שימוש אנונימית בלבד (מספר ביקורים, לחיצות). ללא עוגיות, ללא כתובות IP, ללא מעקב אישי.</p>
         <p>נתוני תקציב המדינה נטענים מ-<a href="https://next.obudget.org" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a> — מידע ציבורי.</p>
-        <p style="color:#64748b;margin-top:0.5rem">לשאלות: <a href="mailto:menash.lando@gmail.com" style="color:#60a5fa">menash.lando@gmail.com</a></p>
       </div>
     </div>
   </div>
@@ -622,7 +634,7 @@
           <li>תמיכה בהגדלת טקסט וקוראי מסך</li>
           <li>עמוד מותאם למובייל (responsive)</li>
         </ul>
-        <p>אם נתקלתם בבעיית נגישות, נשמח לשמוע: <a href="mailto:menash.lando@gmail.com" style="color:#60a5fa">menash.lando@gmail.com</a></p>
+        <p>אם נתקלתם בבעיית נגישות, נשמח לשמוע — פנו אלינו דרך עמוד ״צור קשר״.</p>
         <p style="color:#64748b;margin-top:0.5rem">תאריך עדכון: מרץ 2026</p>
       </div>
     </div>
