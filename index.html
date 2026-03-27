@@ -1418,6 +1418,17 @@
       // Budget cards
       const grid = document.getElementById('budgetGrid');
       grid.innerHTML = '';
+      // Show tap hint on mobile
+      let gridHint = document.getElementById('gridHint');
+      if (IS_TOUCH) {
+        if (!gridHint) {
+          gridHint = document.createElement('p');
+          gridHint.id = 'gridHint';
+          gridHint.style.cssText = 'text-align:center;font-size:0.8rem;color:#64748b;margin-bottom:0.5rem';
+          gridHint.textContent = 'לחץ על סעיף לפירוט';
+          grid.before(gridHint);
+        }
+      }
       const maxPct = Math.max(...budgetItems.map(b => b.pct));
 
       budgetItems.forEach(item => {
@@ -1542,7 +1553,7 @@
       const isMobile = IS_TOUCH;
       document.getElementById('modalSubtitle').innerHTML = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים'
         + '<br><span style="font-size:0.75rem;color:#64748b">'
-        + (isMobile ? 'לחץ על סעיף לפירוט' : 'העבר מעל סעיף לפירוט')
+        + (isMobile ? 'לחץ על סעיף לפירוט' : 'עבור עם העכבר מעל סעיף לפירוט')
         + '</span>';
 
       const srcLine = document.getElementById('modalSourceLine');
