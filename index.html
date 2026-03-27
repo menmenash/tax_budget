@@ -7,6 +7,12 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Accessibility: visible focus for keyboard navigation */
+    :focus-visible {
+      outline: 2px solid #60a5fa;
+      outline-offset: 2px;
+    }
+
     body {
       font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
       background: #0f172a;
@@ -433,11 +439,12 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <a href="#incomeTax" style="position:absolute;top:-100px;right:0;background:#3b82f6;color:#fff;padding:0.5rem 1rem;z-index:9999;border-radius:0 0 8px 8px" onfocus="this.style.top='0';" onblur="this.style.top='-100px';">דלג לתוכן</a>
+  <main class="container">
     <h1>לאן הולך הכסף שלך?</h1>
     <p class="subtitle">
       גלה כמה מהמיסים שלך הולכים לכל סעיף בתקציב המדינה —
-      <select id="yearSelect" style="background:#1e293b;color:#93c5fd;border:1px solid #475569;border-radius:6px;padding:0.2rem 0.5rem;font-size:1rem;font-weight:700;cursor:pointer;">
+      <select id="yearSelect" aria-label="בחירת שנת תקציב" style="background:#1e293b;color:#93c5fd;border:1px solid #475569;border-radius:6px;padding:0.2rem 0.5rem;font-size:1rem;font-weight:700;cursor:pointer;">
       </select>
     </p>
 
@@ -535,7 +542,7 @@
     </div>
 
     <!-- Budget Structure Modal -->
-    <div class="modal-overlay" id="budgetModal" onclick="if(event.target===this)closeBudgetModal()">
+    <div class="modal-overlay" id="budgetModal" role="dialog" aria-label="מבנה תקציב המדינה" onclick="if(event.target===this)closeBudgetModal()">
       <div class="modal">
         <button class="modal-close" onclick="closeBudgetModal()">&times;</button>
         <h3 id="modalTitle">מבנה תקציב המדינה</h3>
@@ -573,6 +580,51 @@
         * החישוב הוא הערכה בלבד ואינו מהווה ייעוץ מקצועי.
         ביטוח לאומי ומס בריאות לא נכללים — הם מנוהלים על ידי המוסד לביטוח לאומי ולא במסגרת תקציב המדינה.
       </p>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer style="max-width:900px;margin:0 auto;padding:1rem;text-align:center;font-size:0.75rem;color:#475569;line-height:2">
+    <a href="mailto:menash.lando@gmail.com" style="color:#64748b;text-decoration:none">צור קשר</a>
+    <span style="margin:0 0.4rem">·</span>
+    <a href="#privacy" onclick="document.getElementById('privacyModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">מדיניות פרטיות</a>
+    <span style="margin:0 0.4rem">·</span>
+    <a href="#accessibility" onclick="document.getElementById('a11yModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">הצהרת נגישות</a>
+  </footer>
+
+  <!-- Privacy Modal -->
+  <div class="modal-overlay" id="privacyModal" onclick="if(event.target===this)this.classList.remove('visible')">
+    <div class="modal" style="max-width:550px">
+      <button class="modal-close" onclick="document.getElementById('privacyModal').classList.remove('visible')">&times;</button>
+      <h3 style="color:#93c5fd;margin-bottom:1rem">מדיניות פרטיות</h3>
+      <div style="font-size:0.85rem;color:#cbd5e1;line-height:1.8">
+        <p><strong>אנחנו לא אוספים מידע אישי.</strong></p>
+        <p>כל הנתונים שאתה מזין (מיסים, הוצאות, רכישות) מעובדים בדפדפן שלך בלבד ולא נשלחים לשום שרת.</p>
+        <p>האתר משתמש ב-<a href="https://www.goatcounter.com" target="_blank" rel="noopener" style="color:#60a5fa">GoatCounter</a> לסטטיסטיקת שימוש אנונימית בלבד (מספר ביקורים, לחיצות). ללא עוגיות, ללא כתובות IP, ללא מעקב אישי.</p>
+        <p>נתוני תקציב המדינה נטענים מ-<a href="https://next.obudget.org" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a> — מידע ציבורי.</p>
+        <p style="color:#64748b;margin-top:0.5rem">לשאלות: <a href="mailto:menash.lando@gmail.com" style="color:#60a5fa">menash.lando@gmail.com</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accessibility Modal -->
+  <div class="modal-overlay" id="a11yModal" onclick="if(event.target===this)this.classList.remove('visible')">
+    <div class="modal" style="max-width:550px">
+      <button class="modal-close" onclick="document.getElementById('a11yModal').classList.remove('visible')">&times;</button>
+      <h3 style="color:#93c5fd;margin-bottom:1rem">הצהרת נגישות</h3>
+      <div style="font-size:0.85rem;color:#cbd5e1;line-height:1.8">
+        <p>אנו שואפים להנגיש את האתר לכלל האוכלוסייה, כולל אנשים עם מוגבלויות, בהתאם לתקן הישראלי (ת"י 5568) ולהנחיות WCAG 2.0 ברמה AA.</p>
+        <p><strong>מה עשינו:</strong></p>
+        <ul style="margin:0.25rem 1.5rem 0.5rem;list-style:disc">
+          <li>תמיכה בניווט מקלדת מלא</li>
+          <li>תיוג סמנטי של טפסים ואלמנטים (labels, headings)</li>
+          <li>ניגודיות צבעים ברמה נאותה</li>
+          <li>תמיכה בהגדלת טקסט וקוראי מסך</li>
+          <li>עמוד מותאם למובייל (responsive)</li>
+        </ul>
+        <p>אם נתקלתם בבעיית נגישות, נשמח לשמוע: <a href="mailto:menash.lando@gmail.com" style="color:#60a5fa">menash.lando@gmail.com</a></p>
+        <p style="color:#64748b;margin-top:0.5rem">תאריך עדכון: מרץ 2026</p>
+      </div>
     </div>
   </div>
 
@@ -1491,6 +1543,9 @@
 
       document.getElementById('results').classList.add('visible');
       document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+
+      // Track calculation event (anonymous, no user data)
+      if (typeof goatcounter !== 'undefined') goatcounter.count({ path: 'calculate', event: true });
 
       // Analytics: track calculation (no user data sent)
       if (typeof goatcounter !== 'undefined') goatcounter.count({ path: 'calculate', event: true });
