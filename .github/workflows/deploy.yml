@@ -31,13 +31,13 @@ jobs:
         run: |
           bash fetch-budget.sh
           echo "--- Files created ---"
-          ls -la budget-data.json 2>/dev/null || echo "budget-data.json NOT created"
+          ls -la budget-data-*.json 2>/dev/null || echo "No budget files created"
 
       - name: Prepare site
         run: |
           mkdir -p _site
           cp index.html _site/
-          [ -f budget-data.json ] && cp budget-data.json _site/ || true
+          cp budget-data-*.json _site/ 2>/dev/null || true
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

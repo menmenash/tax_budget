@@ -148,8 +148,6 @@ def fetch(sql):
         print(f"  Fetch error: {e}")
         return []
 
-YEAR = ${YEAR}
-
 # Strategy: fetch from 'budget' table at depth=2, EXCLUDE income items (code '00%')
 # net_revised includes supplementary budgets (תקציב מתוקן)
 queries = [
@@ -161,20 +159,28 @@ queries = [
      "select code,title,net_revised,net_allocated from budget_items_data where year={year} and net_revised > 0 order by net_revised desc"),
 ]
 
-for year in [YEAR, YEAR-1, YEAR-2]:
+# Fetch all supported years
+current_year = int("${YEAR}")
+years = list(range(current_year, 2020, -1))  # current year down to 2021
+success_count = 0
+
+for year in years:
+    print(f"\n{'='*40}")
+    print(f"Fetching year {year}...")
+    found = False
+
     for qname, sql_tmpl in queries:
         sql = sql_tmpl.format(year=year)
-        print(f"\nTrying {qname} year={year}...")
+        print(f"  Trying {qname}...")
         rows = fetch(sql)
 
         if not rows:
-            print(f"  0 rows")
+            print(f"    0 rows")
             continue
 
         # Extra safety: filter out income items
         rows = [r for r in rows if not (r.get('code') or '').replace('.', '').startswith('00')]
-
-        print(f"  {len(rows)} expenditure rows")
+        print(f"    {len(rows)} expenditure rows")
 
         # Group by code length to find best hierarchy level
         by_len = {}
@@ -188,22 +194,47 @@ for year in [YEAR, YEAR-1, YEAR-2]:
         for l in sorted(by_len.keys()):
             items = by_len[l]
             total = sum(r.get('net_revised') or r.get('net_allocated') or 0 for r in items)
-            print(f"    len={l}: {len(items)} items, {total/1e9:.1f}B")
+            print(f"      len={l}: {len(items)} items, {total/1e9:.1f}B")
             if total > best_total:
                 best_total, best_len = total, l
 
         if not best_len or best_total < 200e9:
-            print(f"  Total {best_total/1e9:.1f}B < 200B threshold")
+            print(f"    Total {best_total/1e9:.1f}B < 200B threshold")
             continue
 
         selected = by_len[best_len]
         total_nis = sum(r.get('net_revised') or r.get('net_allocated') or 0 for r in selected)
-        items = sorted([{
-            'name': r.get('title', ''),
-            'amountNIS': r.get('net_revised') or r.get('net_allocated') or 0,
-            'amountB': round((r.get('net_revised') or r.get('net_allocated') or 0) / 1e9, 1),
-        } for r in selected if (r.get('net_revised') or r.get('net_allocated') or 0) > 0],
-        key=lambda x: -x['amountNIS'])
+
+        # Build items, splitting large supplements (>5B) into separate lines
+        SUPP_THRESHOLD = 5e9
+        items = []
+        for r in selected:
+            revised = r.get('net_revised') or 0
+            allocated = r.get('net_allocated') or 0
+            amount = revised or allocated
+            if amount <= 0: continue
+            title = r.get('title', '')
+            supplement = revised - allocated
+
+            if allocated > 0 and supplement >= SUPP_THRESHOLD:
+                items.append({
+                    'name': title,
+                    'amountNIS': allocated,
+                    'amountB': round(allocated / 1e9, 1),
+                })
+                items.append({
+                    'name': f'תוספת תקציבית — {title}',
+                    'amountNIS': supplement,
+                    'amountB': round(supplement / 1e9, 1),
+                    'supp': True,
+                })
+            else:
+                items.append({
+                    'name': title,
+                    'amountNIS': amount,
+                    'amountB': round(amount / 1e9, 1),
+                })
+        items.sort(key=lambda x: -x['amountNIS'])
 
         result = {
             'year': year,
@@ -214,24 +245,23 @@ for year in [YEAR, YEAR-1, YEAR-2]:
             'fetchedAt': datetime.utcnow().isoformat() + 'Z',
         }
 
-        print(f"\nSUCCESS: year={year}, {result['totalB']}B NIS, {len(items)} items")
-        for item in items[:5]:
-            print(f"  {item['name']}: {item['amountB']}B")
+        filename = f"budget-data-{year}.json"
+        print(f"  SUCCESS: {result['totalB']}B NIS, {len(items)} items -> {filename}")
+        for item in items[:3]:
+            print(f"    {item['name']}: {item['amountB']}B")
 
-        with open('budget-data.json', 'w', encoding='utf-8') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
-        print("Saved to budget-data.json")
-        sys.exit(0)
+        success_count += 1
+        found = True
+        break  # Got data for this year, move to next
 
-print("\nNo expenditure data found for any year.")
-print("Browser will use hardcoded fallback data.")
+    if not found:
+        print(f"  No valid data for {year}")
+
+print(f"\nDone: {success_count}/{len(years)} years fetched.")
 PYEOF
 
-if [ -f "${OUTPUT}" ]; then
-  echo ""
-  echo "=== SUCCESS ==="
-  python3 -c "import json; d=json.load(open('${OUTPUT}')); print(f'Total: {d[\"totalB\"]}B NIS, {len(d[\"items\"])} items')"
-else
-  echo ""
-  echo "=== FAILED - no output file ==="
-fi
+echo ""
+echo "=== Files created ==="
+ls -la budget-data-*.json 2>/dev/null || echo "No budget-data files created"

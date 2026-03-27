@@ -803,21 +803,9 @@
     let budgetYear = new Date().getFullYear();
     let budgetSource = '';
 
-    // ==========================================
-    // obudget.org API integration
-    // API: https://next.obudget.org/api/query?query=...
-    // depth=2 = ministry level
-    // ==========================================
-    const OBUDGET_API = 'https://next.obudget.org/api/query';
-
-    // Budget codes: 2-digit = ministry, 4-digit = dept, etc.
-    // We fetch all items and pick the right level in JS
-    // Per: https://github.com/OpenBudget/BudgetKey
-    // First query ("no-depth") fetches everything, then we group by code
-    // length and pick the level with the largest total
-    const MIN_VALID_BUDGET_NIS = 200e9; // Israel's budget is 400B+; reject anything under 200B as partial/supplementary
-
-    const CACHE_VERSION = 11; // Increment to invalidate old cached data
+    // Budget data is pre-fetched by GitHub Actions and saved as budget-data-{year}.json
+    // Browser loads static JSON files — no API calls needed
+    const CACHE_VERSION = 12; // Increment to invalidate old cached data
 
     function getCacheKey(year) {
       return `tax_budget_cache_v${CACHE_VERSION}_${year}`;
@@ -841,154 +829,6 @@
       try {
         localStorage.setItem(getCacheKey(year), JSON.stringify(data));
       } catch (e) { /* ignore quota errors */ }
-    }
-
-    // Threshold for showing a supplement as a separate line (5B NIS)
-    const SUPP_THRESHOLD_NIS = 5e9;
-
-    function parseApiResponse(json, year) {
-      // The API returns { rows: [ { code, title, net_revised, net_allocated, ... }, ... ] }
-      const rows = json.rows || json;
-      if (!Array.isArray(rows) || rows.length === 0) return null;
-
-      let totalNIS = 0;
-      const items = [];
-
-      for (const row of rows) {
-        const title = row.title || '';
-        const revised = row.net_revised || 0;
-        const allocated = row.net_allocated || 0;
-        const amountNIS = revised || allocated;
-        if (amountNIS <= 0) continue;
-
-        totalNIS += amountNIS;
-
-        // If there's a large supplement (revised >> allocated), split into base + supplement
-        const supplement = revised - allocated;
-        if (allocated > 0 && supplement >= SUPP_THRESHOLD_NIS) {
-          items.push({
-            name: title,
-            amountNIS: allocated,
-            amountB: Math.round(allocated / 1e9 * 10) / 10,
-          });
-          items.push({
-            name: `תוספת תקציבית — ${title}`,
-            amountNIS: supplement,
-            amountB: Math.round(supplement / 1e9 * 10) / 10,
-            supp: true,
-          });
-        } else {
-          items.push({
-            name: title,
-            amountNIS: amountNIS,
-            amountB: Math.round(amountNIS / 1e9 * 10) / 10,
-          });
-        }
-      }
-
-      // Sort by amount descending
-      items.sort((a, b) => b.amountNIS - a.amountNIS);
-
-      return {
-        year,
-        totalNIS,
-        totalB: Math.round(totalNIS / 1e9 * 10) / 10,
-        items,
-        source: 'obudget',
-        fetchedAt: new Date().toISOString(),
-      };
-    }
-
-    // ------------------------------------------
-    // Strategy 1: SQL API query (structured JSON)
-    // Per: https://github.com/OpenBudget/BudgetKey/blob/master/documentation/UsingTheAPI.md
-    // ------------------------------------------
-    async function fetchViaApi(year) {
-      // Budget table has BOTH income (code '00xx') and expenditure (all other codes).
-      // Filter: code not like '00%' to get expenditure only.
-      // net_revised includes supplementary budgets (תקציב מתוקן).
-      // depth=2 = ministry level (e.g., code '0234' = sub-ministry).
-      const strategies = [
-        // Primary: expenditure ministries at depth=2 (most granular ministry-level)
-        { name: 'budget depth=2 (expenditure)', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=2 and code not like '00%' and net_revised > 0 order by net_revised desc` },
-        // Fallback: depth=1 (higher-level grouping)
-        { name: 'budget depth=1 (expenditure)', sql: `select code,title,net_revised,net_allocated from budget where year=${year} and depth=1 and code not like '00%' and net_revised > 0 order by net_revised desc` },
-        // Last resort: budget_items_data table
-        { name: 'budget_items_data', sql: `select code,title,net_revised,net_allocated from budget_items_data where year=${year} and net_revised > 0 order by net_revised desc` },
-      ];
-
-      for (const strat of strategies) {
-        try {
-          const url = `${OBUDGET_API}?query=${encodeURIComponent(strat.sql)}&page_size=300`;
-          console.log(`[budget] Trying ${strat.name}...`);
-          const resp = await fetch(url);
-
-          if (!resp.ok) {
-            console.warn(`[budget] ${strat.name}: HTTP ${resp.status}`);
-            continue;
-          }
-
-          const json = await resp.json();
-          let rows = json.rows || (Array.isArray(json) ? json : []);
-
-          if (!rows.length) {
-            console.warn(`[budget] ${strat.name}: 0 rows`);
-            continue;
-          }
-
-          // Extra safety: filter out any income items that slipped through
-          rows = rows.filter(r => {
-            const code = (r.code || '').replace(/\./g, '');
-            return !code.startsWith('00');
-          });
-
-          console.log(`[budget] ${strat.name}: ${rows.length} expenditure rows`);
-          if (rows[0]) console.log(`[budget]   sample: "${rows[0].code}" ${rows[0].title}`);
-
-          // Group by code length to find the right hierarchy level
-          const byLength = {};
-          rows.forEach(r => {
-            const code = (r.code || '').replace(/\./g, '');
-            const len = code.length;
-            if (!byLength[len]) byLength[len] = [];
-            byLength[len].push(r);
-          });
-
-          // Pick the code length with the biggest total
-          let bestLen = null, bestTotal = 0;
-          for (const [len, items] of Object.entries(byLength)) {
-            const total = items.reduce((s, r) => s + (r.net_revised || r.net_allocated || 0), 0);
-            console.log(`[budget]   len=${len}: ${items.length} items, ${(total/1e9).toFixed(1)}B`);
-            if (total > bestTotal) { bestTotal = total; bestLen = len; }
-          }
-
-          if (bestLen && bestTotal >= MIN_VALID_BUDGET_NIS) {
-            const data = parseApiResponse(byLength[bestLen], year);
-            if (data) {
-              console.log(`[budget] SUCCESS: ${strat.name} len=${bestLen}: ${data.totalB}B NIS, ${data.items.length} items`);
-              return data;
-            }
-          }
-          console.log(`[budget] ${strat.name}: total ${(bestTotal/1e9).toFixed(1)}B < ${MIN_VALID_BUDGET_NIS/1e9}B threshold`);
-        } catch (e) {
-          console.warn(`[budget] ${strat.name} error:`, e.message);
-        }
-      }
-      return null;
-    }
-
-    // ------------------------------------------
-    // Orchestration: fetch budget via SQL API
-    // ------------------------------------------
-    async function tryFetchBudget(year) {
-      try {
-        console.log(`[budget] Fetching expenditure data for ${year}...`);
-        const data = await fetchViaApi(year);
-        if (data) { data.source = 'obudget'; return data; }
-      } catch (e) {
-        console.warn(`[budget] API failed for ${year}:`, e.message);
-      }
-      return null;
     }
 
     function applyBudgetData(data) {
@@ -1041,7 +881,7 @@
     }
 
     async function loadBudgetForYear(year) {
-      // 1. Check localStorage cache (validate it's not income data)
+      // 1. Check localStorage cache
       const cached = loadFromCache(year);
       if (cached && !isIncomeData(cached.items)) {
         console.log(`[budget] Using cached data for ${year}`);
@@ -1049,37 +889,21 @@
         return;
       }
 
-      // 2. Try loading pre-fetched JSON (validate it's not income data)
-      for (const jsonUrl of [`budget-data-${year}.json`, 'budget-data.json']) {
-        try {
-          const jsonResp = await fetch(jsonUrl);
-          if (jsonResp.ok) {
-            const data = await jsonResp.json();
-            if (data && data.items && data.items.length > 0) {
-              if (isIncomeData(data.items)) {
-                console.log(`[budget] ${jsonUrl}: rejected — income data, not expenditure`);
-                continue;
-              }
-              if (jsonUrl === 'budget-data.json' && data.year !== year) continue;
-              console.log(`[budget] Loaded ${jsonUrl}: ${data.totalB}B NIS`);
-              saveToCache(data.year, data);
-              applyBudgetData(data);
-              return;
-            }
+      // 2. Load pre-built JSON (generated by GitHub Actions from obudget.org)
+      try {
+        const jsonResp = await fetch(`budget-data-${year}.json`);
+        if (jsonResp.ok) {
+          const data = await jsonResp.json();
+          if (data && data.items && data.items.length > 0 && !isIncomeData(data.items)) {
+            console.log(`[budget] Loaded budget-data-${year}.json: ${data.totalB}B NIS`);
+            saveToCache(data.year, data);
+            applyBudgetData(data);
+            return;
           }
-        } catch (e) { /* file not found */ }
-      }
+        }
+      } catch (e) { /* file not found */ }
 
-      // 3. Try obudget.org API directly
-      const fetched = await tryFetchBudget(year);
-      if (fetched && !isIncomeData(fetched.items)) {
-        fetched.fetchedAt = new Date().toISOString();
-        saveToCache(year, fetched);
-        applyBudgetData(fetched);
-        return;
-      }
-
-      // 4. Fallback — use year-specific hardcoded data if available, else 2025 proportions
+      // 3. Fallback — hardcoded data
       console.log(`[budget] Using hardcoded fallback for ${year}`);
       const yearFallback = FALLBACK_BY_YEAR[year];
       if (yearFallback) {
