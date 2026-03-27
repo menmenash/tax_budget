@@ -251,7 +251,6 @@
       .total-banner .amount { font-size: 2rem; }
       .tax-breakdown-banner { gap: 1rem; }
       .budget-card { padding: 1rem; }
-      .card-desc-box { display: none !important; }
       .card-amount { font-size: 1.3rem; }
       .modal { padding: 1.25rem; max-height: 90vh; }
       .modal h3 { font-size: 1.1rem; }
@@ -539,9 +538,6 @@
         <button class="modal-close" onclick="closeBudgetModal()">&times;</button>
         <h3 id="modalTitle">מבנה תקציב המדינה</h3>
         <p style="color:#94a3b8;font-size:0.85rem;margin-bottom:0.5rem" id="modalSubtitle">חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים</p>
-        <div id="descBox" style="display:none;background:#0f172a;border:1px solid #475569;border-radius:8px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;font-size:0.82rem;color:#cbd5e1;line-height:1.5;min-height:2.2rem">
-          <strong id="descTitle" style="color:#93c5fd"></strong> <span id="descText"></span>
-        </div>
         <table class="budget-table" id="budgetTable">
           <thead><tr><th></th><th>סעיף</th><th>סכום</th><th>אחוז</th></tr></thead>
           <tbody id="budgetTableBody"></tbody>
@@ -562,9 +558,6 @@
 
       <div class="tax-breakdown-banner" id="taxBreakdown"></div>
 
-      <div id="cardDescBox" class="card-desc-box" style="display:none;background:#162032;border:1px solid #475569;border-radius:10px;padding:0.6rem 0.85rem;margin-bottom:1rem;font-size:0.85rem;color:#cbd5e1;line-height:1.5">
-        <strong id="cardDescTitle" style="color:#93c5fd"></strong> <span id="cardDescText"></span>
-      </div>
       <div class="budget-grid" id="budgetGrid"></div>
 
       <div class="source-info" id="sourceInfo">
@@ -1425,10 +1418,6 @@
       // Budget cards
       const grid = document.getElementById('budgetGrid');
       grid.innerHTML = '';
-      const cardDescBox = document.getElementById('cardDescBox');
-      const cardDescTitle = document.getElementById('cardDescTitle');
-      const cardDescText = document.getElementById('cardDescText');
-      cardDescBox.style.display = 'none';
       const maxPct = Math.max(...budgetItems.map(b => b.pct));
 
       budgetItems.forEach(item => {
@@ -1452,49 +1441,34 @@
           </div>
           <div class="monthly">${formatCurrency(monthly)} לחודש</div>
         `;
-        // Show description on hover/tap
+        // Show description inline on hover/tap
         const tip = getTooltip(item.name);
         if (tip) {
           card.style.cursor = 'pointer';
-          const isTouchDevice = IS_TOUCH;
-          card.addEventListener('click', () => {
-            if (isTouchDevice) {
-              // Mobile: toggle inline description inside the card
-              const existing = card.querySelector('.card-desc');
-              // Remove all other inline descriptions
-              grid.querySelectorAll('.card-desc').forEach(d => d.remove());
-              grid.querySelectorAll('.budget-card').forEach(c => c.style.borderColor = '#334155');
-              if (existing) return; // was open, now closed
-              card.style.borderColor = item.color;
-              const descDiv = document.createElement('div');
-              descDiv.className = 'card-desc';
-              descDiv.style.cssText = 'margin-top:0.5rem;padding:0.5rem 0.6rem;background:#0f172a;border-radius:8px;font-size:0.8rem;color:#cbd5e1;line-height:1.5;border:1px solid #475569';
-              descDiv.textContent = tip;
-              card.appendChild(descDiv);
-            } else {
-              // Desktop click: also show in top box
-              grid.querySelectorAll('.budget-card').forEach(c => c.style.borderColor = '#334155');
-              card.style.borderColor = item.color;
-              cardDescTitle.textContent = item.name + ':';
-              cardDescText.textContent = tip;
-              cardDescBox.style.display = 'block';
-            }
-          });
-          card.addEventListener('mouseenter', () => {
-            cardDescTitle.textContent = item.name + ':';
-            cardDescText.textContent = tip;
-            cardDescBox.style.display = 'block';
-          });
+
+          function showCardDesc() {
+            const existing = card.querySelector('.card-desc');
+            grid.querySelectorAll('.card-desc').forEach(d => d.remove());
+            grid.querySelectorAll('.budget-card').forEach(c => c.style.borderColor = '#334155');
+            if (existing) return; // toggle off
+            card.style.borderColor = item.color;
+            const descDiv = document.createElement('div');
+            descDiv.className = 'card-desc';
+            descDiv.style.cssText = 'margin-top:0.5rem;padding:0.5rem 0.6rem;background:#0f172a;border-radius:8px;font-size:0.8rem;color:#cbd5e1;line-height:1.5;border:1px solid #475569';
+            descDiv.textContent = tip;
+            card.appendChild(descDiv);
+          }
+
+          card.addEventListener('click', showCardDesc);
+          if (!IS_TOUCH) {
+            card.addEventListener('mouseenter', showCardDesc);
+            card.addEventListener('mouseleave', () => {
+              card.querySelector('.card-desc')?.remove();
+              card.style.borderColor = '#334155';
+            });
+          }
         }
         grid.appendChild(card);
-      });
-
-      // Desktop: hide description when mouse leaves grid
-      grid.addEventListener('mouseleave', () => {
-        if (!IS_TOUCH) {
-          cardDescBox.style.display = 'none';
-          grid.querySelectorAll('.budget-card').forEach(c => c.style.borderColor = '#334155');
-        }
       });
 
       document.getElementById('results').classList.add('visible');
@@ -1518,18 +1492,6 @@
         return { ...i, pct: (i.amountB / activeFallback.totalB) * 100, ...style };
       });
 
-      const descBox = document.getElementById('descBox');
-      const descTitle = document.getElementById('descTitle');
-      const descText = document.getElementById('descText');
-      descBox.style.display = 'none';
-
-      function showDesc(name, tip) {
-        if (!tip) { descBox.style.display = 'none'; return; }
-        descTitle.textContent = name + ':';
-        descText.textContent = tip;
-        descBox.style.display = 'block';
-      }
-
       let totalB = 0;
       items.forEach(item => {
         totalB += item.amountB;
@@ -1543,21 +1505,30 @@
           <td class="cat-amount">${item.amountB} מיליארד ₪</td>
           <td class="cat-pct">${item.pct.toFixed(1)}%</td>
         `;
-        // Click/tap: show description in box
-        tr.addEventListener('click', () => {
+
+        function showInlineDesc() {
+          if (!tip) return;
+          // Remove any existing desc row
+          tbody.querySelectorAll('tr.desc-row').forEach(r => r.remove());
           tbody.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
           tr.classList.add('active-row');
-          showDesc(item.name, tip);
-        });
-        // Desktop hover: show description in box
-        tr.addEventListener('mouseenter', () => showDesc(item.name, tip));
+          const descTr = document.createElement('tr');
+          descTr.className = 'desc-row';
+          descTr.innerHTML = `<td colspan="4" style="padding:0.4rem 0.5rem 0.6rem 0.5rem;background:#0f172a;border-bottom:1px solid #475569;font-size:0.8rem;color:#cbd5e1;line-height:1.5;white-space:normal">${tip}</td>`;
+          tr.after(descTr);
+        }
+
+        tr.addEventListener('click', showInlineDesc);
+        if (!IS_TOUCH) {
+          tr.addEventListener('mouseenter', showInlineDesc);
+        }
         tbody.appendChild(tr);
       });
 
-      // Hide description when mouse leaves table (desktop)
+      // Desktop: hide desc when mouse leaves table
       document.getElementById('budgetTable').addEventListener('mouseleave', () => {
         if (!IS_TOUCH) {
-          descBox.style.display = 'none';
+          tbody.querySelectorAll('tr.desc-row').forEach(r => r.remove());
           tbody.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
         }
       });
