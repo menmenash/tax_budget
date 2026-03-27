@@ -21,7 +21,7 @@ jobs:
         run: |
           bash fetch-budget.sh
           echo "--- Files created ---"
-          ls -la budget-data.json 2>/dev/null || echo "budget-data.json NOT created"
+          ls -la budget-data-*.json 2>/dev/null || echo "No budget files created"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -40,16 +40,14 @@ jobs:
             content-type: text/html; charset=utf-8
             cache-control: public, max-age=300
 
-      - name: Manage budget data JSON
+      - name: Upload budget data JSON files
         if: ${{ success() }}
         run: |
-          if [ -f budget-data.json ]; then
-            echo "Uploading budget-data.json..."
-            gcloud storage cp budget-data.json gs://${{ secrets.GCS_BUCKET_NAME }}/budget-data.json \
+          for f in budget-data-*.json; do
+            [ -f "$f" ] || continue
+            echo "Uploading $f..."
+            gcloud storage cp "$f" gs://${{ secrets.GCS_BUCKET_NAME }}/"$f" \
               --content-type="application/json; charset=utf-8" \
               --cache-control="public, max-age=86400"
-            echo "Done!"
-          else
-            echo "No valid expenditure data found — removing old budget-data.json if exists"
-            gcloud storage rm gs://${{ secrets.GCS_BUCKET_NAME }}/budget-data.json 2>/dev/null || true
-          fi
+          done
+          echo "Done!"
