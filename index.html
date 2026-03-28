@@ -18,6 +18,7 @@
       background: #0f172a;
       color: #e2e8f0;
       min-height: 100vh;
+      font-size: 1.05rem;
     }
 
     .container {
@@ -545,7 +546,8 @@
     <div class="modal-overlay" id="budgetModal" role="dialog" aria-label="מבנה תקציב המדינה" onclick="if(event.target===this)closeBudgetModal()">
       <div class="modal">
         <button class="modal-close" onclick="closeBudgetModal()">&times;</button>
-        <h3 id="modalTitle">מבנה תקציב המדינה</h3>
+        <h3 id="modalTitle" style="display:inline">מבנה תקציב המדינה</h3>
+        <select id="modalYearSelect" aria-label="בחירת שנה בחלונית התקציב" style="background:#0f172a;color:#93c5fd;border:1px solid #475569;border-radius:6px;padding:0.2rem 0.5rem;font-size:1rem;font-weight:700;cursor:pointer;margin-right:0.3rem;vertical-align:middle"></select>
         <p style="color:#94a3b8;font-size:0.85rem;margin-bottom:0.5rem" id="modalSubtitle">חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים</p>
         <table class="budget-table" id="budgetTable">
           <thead><tr><th></th><th>סעיף</th><th>סכום</th><th>אחוז</th></tr></thead>
@@ -1559,23 +1561,55 @@
     // ==========================================
     // Budget Structure Modal
     // ==========================================
-    function showBudgetModal() {
+    function showBudgetModal(overrideYear) {
       if (typeof goatcounter !== 'undefined') goatcounter.count({ path: 'view-budget', event: true });
+
+      const modalYear = overrideYear || budgetYear;
+
       const tbody = document.getElementById('budgetTableBody');
       const tfoot = document.getElementById('budgetTableFoot');
       tbody.innerHTML = '';
       tfoot.innerHTML = '';
 
-      document.getElementById('modalTitle').textContent = `מבנה תקציב המדינה ${budgetYear}`;
+      document.getElementById('modalTitle').textContent = 'מבנה תקציב המדינה';
 
-      const activeFallback = FALLBACK_BY_YEAR[budgetYear] || FALLBACK_2025;
-      const items = budgetItems.length > 0 ? budgetItems : activeFallback.items.map(i => {
-        const style = getCategoryStyle(i.name);
-        return { ...i, pct: (i.amountB / activeFallback.totalB) * 100, ...style };
-      });
+      // Populate modal year selector
+      const modalSel = document.getElementById('modalYearSelect');
+      if (modalSel.options.length === 0) {
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear - 1; y >= 2021; y--) {
+          const opt = document.createElement('option');
+          opt.value = y;
+          opt.textContent = y;
+          modalSel.appendChild(opt);
+        }
+        modalSel.addEventListener('change', () => {
+          showBudgetModal(parseInt(modalSel.value));
+        });
+      }
+      modalSel.value = String(modalYear);
+
+      // Load data for selected year — try JSON cache, then fallback
+      let modalItems;
+      const cached = loadFromCache(modalYear);
+      if (cached && !isIncomeData(cached.items)) {
+        const totalB = cached.totalB;
+        modalItems = cached.items.map(item => {
+          const style = getCategoryStyle(item.name);
+          return { ...item, pct: (item.amountB / totalB) * 100, ...style };
+        });
+      } else if (modalYear === budgetYear && budgetItems.length > 0) {
+        modalItems = budgetItems;
+      } else {
+        const activeFallback = FALLBACK_BY_YEAR[modalYear] || FALLBACK_2025;
+        modalItems = activeFallback.items.map(i => {
+          const style = getCategoryStyle(i.name);
+          return { ...i, pct: (i.amountB / activeFallback.totalB) * 100, ...style };
+        });
+      }
 
       let totalB = 0;
-      items.forEach(item => {
+      modalItems.forEach(item => {
         totalB += item.amountB;
         const suppMark = item.supp ? ' <span style="color:#60a5fa;font-size:0.7rem">תוספת</span>' : '';
         const tip = getTooltip(item.name);
@@ -1628,11 +1662,8 @@
         + '</span>';
 
       const srcLine = document.getElementById('modalSourceLine');
-      if (budgetSource === 'obudget') {
-        srcLine.innerHTML = `מקור: <a href="https://next.obudget.org/i/budget/00/${budgetYear}" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a>`;
-      } else {
-        srcLine.innerHTML = `מקור: <a href="https://next.obudget.org" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a>, <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener" style="color:#60a5fa">אתר הכנסת</a>`;
-      }
+      const obudgetLink = `https://next.obudget.org/i/budget/00/${modalYear}`;
+      srcLine.innerHTML = `מקור: <a href="${obudgetLink}" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a>, <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener" style="color:#60a5fa">אתר הכנסת</a>`;
 
       document.getElementById('budgetModal').classList.add('visible');
     }
