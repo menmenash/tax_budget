@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>לאן הולך הכסף שלך? - מחשבון תקציב המדינה</title>
+  <title>Where Does Your Money Go? - Israel Budget Calculator</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -108,7 +108,7 @@
       color: #e2e8f0;
       font-size: 1.1rem;
       direction: ltr;
-      text-align: right;
+      text-align: left;
       transition: border-color 0.2s;
     }
 
@@ -392,7 +392,7 @@
     }
 
     .modal-close {
-      float: left;
+      float: right;
       background: none;
       border: none;
       color: #94a3b8;
@@ -406,14 +406,14 @@
 
     .budget-table {
       width: auto;
-      margin-right: 0;
+      margin-left: 0;
       border-collapse: collapse;
       font-size: 0.85rem;
-      direction: rtl;
+      direction: ltr;
     }
 
     .budget-table th {
-      text-align: right;
+      text-align: left;
       padding: 0.35rem 0.3rem;
       border-bottom: 2px solid #334155;
       color: #94a3b8;
@@ -430,9 +430,9 @@
     .budget-table tr:nth-child(even) { background: rgba(255,255,255,0.02); }
 
     .budget-table .cat-icon { text-align: center; width: 1.6rem; padding: 0.3rem 0 0.3rem 0.2rem; }
-    .budget-table .cat-name { text-align: right; padding-left: 0.6rem; white-space: normal; }
-    .budget-table .cat-amount { text-align: right; font-weight: 600; }
-    .budget-table .cat-pct { color: #64748b; font-size: 0.8rem; text-align: left; direction: ltr; width: 3rem; padding-left: 0; }
+    .budget-table .cat-name { text-align: left; padding-right: 0.6rem; white-space: normal; }
+    .budget-table .cat-amount { text-align: left; font-weight: 600; }
+    .budget-table .cat-pct { color: #64748b; font-size: 0.8rem; text-align: right; width: 3rem; padding-right: 0; }
     .budget-table tr.supp-row { background: rgba(96,165,250,0.06); }
 
     .budget-table tr { cursor: pointer; }
@@ -440,103 +440,103 @@
   </style>
 </head>
 <body>
-  <a href="en.html" id="langToggle" style="position:fixed;top:0.6rem;left:0.6rem;z-index:9999;font-size:1.3rem;text-decoration:none;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:0.2rem 0.45rem;opacity:0.7;transition:opacity 0.2s" title="English" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.7'">🇺🇸</a>
-  <a href="#incomeTax" style="position:absolute;top:-100px;right:0;background:#3b82f6;color:#fff;padding:0.5rem 1rem;z-index:9999;border-radius:0 0 8px 8px" onfocus="this.style.top='0';" onblur="this.style.top='-100px';">דלג לתוכן</a>
+  <a href="index.html" id="langToggle" style="position:fixed;top:0.6rem;left:0.6rem;z-index:9999;font-size:1.3rem;text-decoration:none;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:0.2rem 0.45rem;opacity:0.7;transition:opacity 0.2s" title="עברית" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.7'">🇮🇱</a>
+  <a href="#incomeTax" style="position:absolute;top:-100px;right:0;background:#3b82f6;color:#fff;padding:0.5rem 1rem;z-index:9999;border-radius:0 0 8px 8px" onfocus="this.style.top='0';" onblur="this.style.top='-100px';">Skip to content</a>
   <main class="container">
-    <h1>לאן הולך הכסף שלך?</h1>
+    <h1>Where Does Your Money Go?</h1>
     <p class="subtitle">
-      גלה כמה מהמיסים שלך הולכים לכל סעיף בתקציב המדינה —
+      Discover how your taxes are distributed across Israel's state budget —
       <select id="yearSelect" aria-label="בחירת שנת תקציב" style="background:#1e293b;color:#93c5fd;border:1px solid #475569;border-radius:6px;padding:0.2rem 0.5rem;font-size:1rem;font-weight:700;cursor:pointer;">
       </select>
     </p>
 
     <!-- Inputs -->
     <div class="input-section">
-      <h2>הזן את נתוני המיסים שלך</h2>
-      <p style="color:#64748b;font-size:0.8rem;margin-top:-0.75rem;margin-bottom:1.25rem;">הטופס אנונימי לחלוטין. הנתונים לא נשמרים ולא נשלחים לשום מקום — הכל מחושב בדפדפן שלך בלבד.</p>
+      <h2>Enter Your Tax Data</h2>
+      <p style="color:#64748b;font-size:0.8rem;margin-top:-0.75rem;margin-bottom:1.25rem;">This form is completely anonymous. No data is stored or sent anywhere — everything is calculated in your browser only.</p>
       <div class="input-group">
         <div class="field">
-          <label for="incomeTax">מס הכנסה שנתי</label>
-          <span class="hint">מתוך טופס 106 / שומה שנתית</span>
-          <input type="text" id="incomeTax" inputmode="numeric" placeholder="לדוגמה: 40,000">
+          <label for="incomeTax">Annual Income Tax</label>
+          <span class="hint">From form 106 / annual tax assessment</span>
+          <input type="text" id="incomeTax" inputmode="numeric" placeholder="e.g. 40,000">
         </div>
         <div class="field">
-          <label for="capitalTax">מס רווחי הון</label>
-          <span class="hint">מתוך טופס 867 מהבנק/ברוקר, או טופס 1322 (דוח שנתי למס הכנסה)</span>
-          <input type="text" id="capitalTax" inputmode="numeric" placeholder="לדוגמה: 3,000">
+          <label for="capitalTax">Capital Gains Tax</label>
+          <span class="hint">From form 867 (bank/broker) or form 1322 (annual tax return)</span>
+          <input type="text" id="capitalTax" inputmode="numeric" placeholder="e.g. 3,000">
         </div>
 
         <!-- File upload OR manual entry for VAT -->
         <div class="field full-width">
-          <label>מע״מ ששילמת (18% מהוצאות בישראל)</label>
-          <span class="hint">העלה קובץ הוצאות מ-Riseup או Caspion (כלכלית) — שנה שלמה. נחשב מע״מ רק על הוצאות בישראל.</span>
+          <label>VAT You Paid (18% of expenses in Israel)</label>
+          <span class="hint">Upload an expense file from Riseup or Caspion — full year. VAT calculated only on Israeli expenses.</span>
 
           <div class="upload-area" id="uploadArea">
             <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.tsv">
             <div class="upload-icon">📎</div>
             <div class="upload-text">
-              <strong>לחץ כאן</strong> או גרור קובץ אקסל/CSV<br>
-              <span style="font-size:0.75rem;color:#64748b">Riseup: הגדרות > הגדרות מינוי > הורדת התזרים לאקסל<br>Caspion: ייצוא > Excel</span>
+              <strong>Click here</strong> or drag an Excel/CSV file<br>
+              <span style="font-size:0.75rem;color:#64748b">Riseup: Settings > Subscription > Download transactions<br>Caspion: Export > Excel</span>
             </div>
             <div class="file-name" id="fileName"></div>
           </div>
 
           <div id="vatSummary" class="vat-summary">
             <div class="vat-row">
-              <span>סך הוצאות בקובץ:</span>
+              <span>Total expenses in file:</span>
               <span id="totalExpenses">-</span>
             </div>
             <div class="vat-row">
-              <span>הוצאות בישראל חייבות במע״מ:</span>
+              <span>VAT-eligible Israeli expenses:</span>
               <span class="included" id="vatEligible">-</span>
             </div>
             <div class="vat-row">
-              <span>הוצאות פטורות / חו״ל (לא נספרו):</span>
+              <span>Exempt / foreign (not counted):</span>
               <span class="excluded" id="vatExcluded">-</span>
             </div>
             <div class="vat-row total">
-              <span>מע״מ ששילמת (משוער):</span>
+              <span>VAT you paid (estimated):</span>
               <span id="vatAmount">-</span>
             </div>
           </div>
           <div id="fuelInfo"></div>
 
-          <div class="or-divider">- או הזן ידנית -</div>
+          <div class="or-divider">- or enter manually -</div>
 
-          <input type="text" id="manualExpenses" inputmode="numeric" placeholder="סך הוצאות שנתיות בישראל (כולל מע״מ)">
-          <span class="hint">אם אין לך קובץ — הזן סכום כולל של הוצאות. נחשב 18% מע״מ מתוכו.</span>
+          <input type="text" id="manualExpenses" inputmode="numeric" placeholder="Total annual expenses in Israel (incl. VAT)">
+          <span class="hint">If you don't have a file — enter total expenses. We'll calculate 18% VAT from it.</span>
         </div>
       </div>
 
       <!-- Optional: Property & Vehicle purchases -->
       <div class="field full-width" style="margin-top:0.5rem">
-        <label style="color:#93c5fd;font-size:1rem;margin-bottom:0.5rem;display:block">רכישות גדולות בשנה האחרונה (אופציונלי)</label>
+        <label style="color:#93c5fd;font-size:1rem;margin-bottom:0.5rem;display:block">Large Purchases This Year (optional)</label>
 
         <div class="input-group" style="margin-bottom:0">
           <div class="field">
-            <label for="propertyPrice">רכישת דירה — מחיר</label>
-            <span class="hint">אם רכשת דירה השנה, הזן את מחיר הרכישה</span>
-            <input type="text" id="propertyPrice" inputmode="numeric" placeholder="לדוגמה: 2,000,000">
+            <label for="propertyPrice">Apartment Purchase — Price</label>
+            <span class="hint">If you bought an apartment this year, enter the price</span>
+            <input type="text" id="propertyPrice" inputmode="numeric" placeholder="e.g. 2,000,000">
           </div>
           <div class="field">
-            <label for="propertyType">סוג דירה</label>
-            <span class="hint">דירה יחידה = מדרגות מס מופחתות</span>
+            <label for="propertyType">Apartment Type</label>
+            <span class="hint">Primary residence = reduced tax brackets</span>
             <select id="propertyType" style="padding:0.75rem 1rem;border-radius:10px;border:1px solid #475569;background:#0f172a;color:#e2e8f0;font-size:1rem;">
-              <option value="">לא רכשתי דירה</option>
-              <option value="single">דירה יחידה</option>
-              <option value="investment">דירה להשקעה / דירה נוספת</option>
+              <option value="">Didn't buy an apartment</option>
+              <option value="single">Primary residence</option>
+              <option value="investment">Investment / additional apartment</option>
             </select>
           </div>
           <div class="field">
-            <label for="vehiclePrice">רכישת רכב חדש — מחירון</label>
-            <span class="hint">רכב חדש בלבד (מס קנייה ~83% מגולם במחירון). רכב יד שנייה — אין מס קנייה נוסף.</span>
-            <input type="text" id="vehiclePrice" inputmode="numeric" placeholder="לדוגמה: 180,000">
+            <label for="vehiclePrice">New Vehicle — Catalog Price</label>
+            <span class="hint">New cars only (purchase tax ~83% included in price). Used cars — no additional tax.</span>
+            <input type="text" id="vehiclePrice" inputmode="numeric" placeholder="e.g. 180,000">
           </div>
         </div>
       </div>
 
       <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:1.5rem">
-        <button class="btn-calc" style="flex:1;min-width:200px" onclick="calculate()">חשב את התרומה שלי לתקציב</button>
+        <button class="btn-calc" style="flex:1;min-width:200px" onclick="calculate()">Calculate My Budget Contribution</button>
       </div>
       <div style="text-align:center;margin-top:0.75rem">
         <button class="btn-budget-info" id="btnBudgetInfo" onclick="showBudgetModal()">מבנה תקציב</button>
@@ -549,9 +549,9 @@
         <button class="modal-close" onclick="closeBudgetModal()">&times;</button>
         <h3 id="modalTitle" style="display:inline">מבנה תקציב המדינה</h3>
         <select id="modalYearSelect" aria-label="בחירת שנה בחלונית התקציב" style="background:#0f172a;color:#93c5fd;border:1px solid #475569;border-radius:6px;padding:0.2rem 0.5rem;font-size:1rem;font-weight:700;cursor:pointer;margin-right:0.3rem;vertical-align:middle"></select>
-        <p style="color:#94a3b8;font-size:0.85rem;margin-bottom:0.5rem" id="modalSubtitle">חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים</p>
+        <p style="color:#94a3b8;font-size:0.85rem;margin-bottom:0.5rem" id="modalSubtitle">Government expenditure by main categories</p>
         <table class="budget-table" id="budgetTable">
-          <thead><tr><th></th><th>סעיף</th><th>סכום</th><th>אחוז</th></tr></thead>
+          <thead><tr><th></th><th>Category</th><th>Amount</th><th>%</th></tr></thead>
           <tbody id="budgetTableBody"></tbody>
           <tfoot id="budgetTableFoot"></tfoot>
         </table>
@@ -564,13 +564,13 @@
     <!-- Results -->
     <div class="results-section" id="results">
       <div class="total-banner">
-        <div class="label">סה״כ מיסים שנתיים (משוער)</div>
+        <div class="label">Total Annual Taxes (estimated)</div>
         <div class="amount" id="totalTax"></div>
         <p style="margin-top:0.75rem;text-align:center">
-          <a href="#" id="didYouKnow" style="color:#a5b4fc;font-size:0.85rem;text-decoration:underline;cursor:pointer" onclick="event.preventDefault()">הידעת?</a>
+          <a href="#" id="didYouKnow" style="color:#a5b4fc;font-size:0.85rem;text-decoration:underline;cursor:pointer" onclick="event.preventDefault()">Did you know?</a>
         </p>
         <p id="didYouKnowText" style="display:none;color:#a5b4fc;font-size:0.78rem;margin-top:0.4rem;line-height:1.6;max-width:500px;margin-left:auto;margin-right:auto">
-          תקציב המדינה מורכב מ-80%-85% מיסים, כ-5%-8% ממכירת קרקעות, תמלוגי גז, דיבידנדים ואגרות, וכ-5%-10% מגירעון תקציבי (שגדל משמעותית בתקופת המלחמה לאזור ה-15%-20%).
+          Israel's state budget is funded by 80%-85% taxes, about 5%-8% from land sales, gas royalties, dividends and fees, and roughly 5%-10% from deficit spending (which grew significantly during the war to around 15%-20%).
         </p>
       </div>
 
@@ -579,36 +579,36 @@
       <div class="budget-grid" id="budgetGrid"></div>
 
       <div class="source-info" id="sourceInfo">
-        <strong>מקור נתוני התקציב:</strong>
-        <span id="sourceText">טוען נתונים...</span>
+        <strong>Budget data source:</strong>
+        <span id="sourceText">Loading data...</span>
       </div>
 
       <div id="dataStatus" style="text-align:center;margin-top:0.5rem;font-size:0.75rem;color:#475569;"></div>
 
       <p class="disclaimer">
-        * החישוב הוא הערכה בלבד ואינו מהווה ייעוץ מקצועי.
-        ביטוח לאומי ומס בריאות לא נכללים — הם מנוהלים על ידי המוסד לביטוח לאומי ולא במסגרת תקציב המדינה.
+        * This calculation is an estimate only and does not constitute professional advice.
+        National Insurance and health tax are not included — they are managed by the National Insurance Institute, not the state budget.
       </p>
     </div>
   </main>
 
   <!-- Footer -->
   <footer style="max-width:900px;margin:0 auto;padding:1rem;text-align:center;font-size:0.75rem;color:#475569;line-height:2">
-    <a href="#contact" onclick="document.getElementById('contactModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">צור קשר</a>
+    <a href="#contact" onclick="document.getElementById('contactModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">Contact</a>
     <span style="margin:0 0.4rem">·</span>
-    <a href="#privacy" onclick="document.getElementById('privacyModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">מדיניות פרטיות</a>
+    <a href="#privacy" onclick="document.getElementById('privacyModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">Privacy Policy</a>
     <span style="margin:0 0.4rem">·</span>
-    <a href="#accessibility" onclick="document.getElementById('a11yModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">הצהרת נגישות</a>
+    <a href="#accessibility" onclick="document.getElementById('a11yModal').classList.add('visible');return false" style="color:#64748b;text-decoration:none">Accessibility</a>
   </footer>
 
   <!-- Contact Modal -->
   <div class="modal-overlay" id="contactModal" onclick="if(event.target===this)this.classList.remove('visible')">
     <div class="modal" style="max-width:550px">
       <button class="modal-close" onclick="document.getElementById('contactModal').classList.remove('visible')">&times;</button>
-      <h3 style="color:#93c5fd;margin-bottom:1rem">צור קשר</h3>
+      <h3 style="color:#93c5fd;margin-bottom:1rem">Contact</h3>
       <div style="font-size:0.85rem;color:#cbd5e1;line-height:1.8">
-        <p>מטרת המחשבון היא לקדם בציבור תחושת אחריות ושותפות בנטל — מהצד הפיננסי. המטרה הנוספת היא מודעות אזרחית.</p>
-        <p style="margin-top:0.75rem">לשאלות, הצעות או הערות:</p>
+        <p>This calculator aims to promote a sense of responsibility and shared burden — from the financial side. The additional goal is civic awareness.</p>
+        <p style="margin-top:0.75rem">For questions, suggestions or comments:</p>
         <p><a href="https://t.me/menashland" target="_blank" rel="noopener" style="color:#60a5fa;font-size:0.85rem">t.me/menashland</a></p>
       </div>
     </div>
@@ -618,12 +618,12 @@
   <div class="modal-overlay" id="privacyModal" onclick="if(event.target===this)this.classList.remove('visible')">
     <div class="modal" style="max-width:550px">
       <button class="modal-close" onclick="document.getElementById('privacyModal').classList.remove('visible')">&times;</button>
-      <h3 style="color:#93c5fd;margin-bottom:1rem">מדיניות פרטיות</h3>
+      <h3 style="color:#93c5fd;margin-bottom:1rem">Privacy Policy</h3>
       <div style="font-size:0.85rem;color:#cbd5e1;line-height:1.8">
-        <p><strong>אנחנו לא אוספים מידע אישי, או מידע שמוזן/מתקבל כלל.</strong></p>
-        <p>כל הנתונים שאתה מזין (מיסים, הוצאות, רכישות) מעובדים בדפדפן שלך בלבד ולא נשלחים לשום שרת.</p>
-        <p>האתר משתמש ב-<a href="https://www.goatcounter.com" target="_blank" rel="noopener" style="color:#60a5fa">GoatCounter</a> לסטטיסטיקת שימוש אנונימית בלבד (מספר ביקורים, לחיצות). ללא עוגיות, ללא כתובות IP, ללא מעקב אישי.</p>
-        <p>נתוני תקציב המדינה נטענים מ-<a href="https://next.obudget.org" target="_blank" rel="noopener" style="color:#60a5fa">מפתח התקציב (obudget.org)</a> — מידע ציבורי.</p>
+        <p><strong>We do not collect any personal data, or any data entered/received at all.</strong></p>
+        <p>All data you enter (taxes, expenses, purchases) is processed in your browser only and never sent to any server.</p>
+        <p>The site uses <a href="https://www.goatcounter.com" target="_blank" rel="noopener" style="color:#60a5fa">GoatCounter</a> for anonymous usage statistics only (visit counts, clicks). No cookies, no IP addresses, no personal tracking.</p>
+        <p>Budget data is loaded from <a href="https://next.obudget.org" target="_blank" rel="noopener" style="color:#60a5fa">Open Budget (obudget.org)</a> — public information.</p>
       </div>
     </div>
   </div>
@@ -632,12 +632,12 @@
   <div class="modal-overlay" id="a11yModal" onclick="if(event.target===this)this.classList.remove('visible')">
     <div class="modal" style="max-width:550px">
       <button class="modal-close" onclick="document.getElementById('a11yModal').classList.remove('visible')">&times;</button>
-      <h3 style="color:#93c5fd;margin-bottom:1rem">נגישות</h3>
+      <h3 style="color:#93c5fd;margin-bottom:1rem">Accessibility</h3>
       <div style="font-size:0.85rem;color:#cbd5e1;line-height:1.8">
-        <p>האתר הזה פשוט — טופס אחד, חישוב בדפדפן, בלי תפריטים מורכבים. ניסינו לוודא שהוא נוח לשימוש לכולם:</p>
-        <p>ניווט מקלדת, תיוג נכון של שדות, ניגודיות צבעים סבירה, ותצוגה מותאמת למובייל.</p>
-        <p>אם משהו לא נגיש או לא נוח — ספרו לנו דרך ״צור קשר״ ונתקן.</p>
-        <p style="color:#64748b;margin-top:0.5rem">עדכון: מרץ 2026. האתר נבנה בהתאם להנחיות WCAG 2.0 AA.</p>
+        <p>This site is simple — one form, browser-side calculation, no complex menus. We tried to make it comfortable for everyone:</p>
+        <p>Keyboard navigation, proper field labels, reasonable color contrast, and mobile-responsive design.</p>
+        <p>If something isn't accessible or comfortable — let us know via "Contact" and we'll fix it.</p>
+        <p style="color:#64748b;margin-top:0.5rem">Updated: March 2026. Built according to WCAG 2.0 AA guidelines.</p>
       </div>
     </div>
   </div>
@@ -768,7 +768,7 @@
         { name: "תשתיות ותחבורה",                 amountB: 38 },
         { name: "רווחה ושירותים חברתיים",           amountB: 30 },
         { name: "פנסיה תקציבית",                  amountB: 28 },
-        { name: "תוספת תקציבית — ביטחון (חרבות ברזל)", amountB: 26, supp: true },
+        { name: "Supplement תקציבית — ביטחון (חרבות ברזל)", amountB: 26, supp: true },
         { name: "ביטחון פנים ומשטרה",              amountB: 22 },
         { name: "שיכון ובינוי",                    amountB: 12 },
         { name: "כלכלה ותעשייה",                   amountB: 10},
@@ -796,7 +796,7 @@
         { name: "החזר חובות וריבית",             amountB: 110 },
         { name: "חינוך והשכלה גבוהה",              amountB: 84 },
         { name: "ביטחון והגנה",                   amountB: 75 },
-        { name: "תוספת תקציבית — ביטחון (חרבות ברזל)", amountB: 77, supp: true },
+        { name: "Supplement תקציבית — ביטחון (חרבות ברזל)", amountB: 77, supp: true },
         { name: "ביטוח לאומי וקצבאות",             amountB: 61 },
         { name: "בריאות",                          amountB: 52 },
         { name: "תשתיות ותחבורה",                 amountB: 40 },
@@ -895,7 +895,7 @@
 
       // Update budget button text with selected year
       const btnInfo = document.getElementById('btnBudgetInfo');
-      if (btnInfo) btnInfo.textContent = `מבנה תקציב ${budgetYear}`;
+      if (btnInfo) btnInfo.textContent = `Budget Structure ${budgetYear}`;
 
       const totalB = data.totalB;
       budgetItems = data.items.map(item => {
@@ -921,15 +921,15 @@
       const obudgetLink = `https://next.obudget.org/i/budget/00/${budgetYear}`;
 
       if (data.source === 'obudget') {
-        sourceTextEl.innerHTML = `נתוני תקציב המדינה לשנת <strong>${budgetYear}</strong> (~${totalB} מיליארד ש״ח) נטענו מ<a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב (obudget.org)</a>.`;
+        sourceTextEl.innerHTML = `Budget data for <strong>${budgetYear}</strong> (~${totalB}B NIS) loaded from <a href="${obudgetLink}" target="_blank" rel="noopener">Open Budget (obudget.org)</a>.`;
         statusEl.textContent = data.fetchedAt
-          ? `נתונים נשמרו ב-cache. עדכון אחרון: ${new Date(data.fetchedAt).toLocaleDateString('he-IL')}`
+          ? `Cached. Last update: ${new Date(data.fetchedAt).toLocaleDateString('en-US')}`
           : '';
       } else if (data.note === 'proportions' && budgetYear !== 2025) {
-        sourceTextEl.innerHTML = `חלוקת התקציב לפי <strong>שנת 2025</strong> (שימוש באותם אחוזים). נתוני ${budgetYear} המלאים לא זמינים מה-API. מקור: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>, <a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב</a>.`;
-        statusEl.textContent = 'האחוזים מבוססים על תקציב 2025 — ההפרשים בין שנים אינם משמעותיים.';
+        sourceTextEl.innerHTML = `Budget split based on <strong>2025</strong> proportions. Full ${budgetYear} data unavailable. Source: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">Knesset</a>, <a href="${obudgetLink}" target="_blank" rel="noopener">Open Budget</a>.`;
+        statusEl.textContent = 'Proportions based on 2025 budget — differences between years are not significant.';
       } else {
-        sourceTextEl.innerHTML = `נתוני תקציב ${budgetYear} (נתונים שמורים). מקור: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">אתר הכנסת</a>, <a href="${obudgetLink}" target="_blank" rel="noopener">מפתח התקציב</a>.`;
+        sourceTextEl.innerHTML = `Budget ${budgetYear} (stored data). Source: <a href="https://main.knesset.gov.il/About/pages/budget/budgetinfo8.aspx" target="_blank" rel="noopener">Knesset</a>, <a href="${obudgetLink}" target="_blank" rel="noopener">Open Budget</a>.`;
         statusEl.textContent = '';
       }
     }
@@ -984,7 +984,7 @@
       for (let y = defaultYear; y >= 2021; y--) {
         const opt = document.createElement('option');
         opt.value = y;
-        opt.textContent = `שנת ${y}`;
+        opt.textContent = `Year ${y}`;
         if (y === defaultYear) opt.selected = true;
         sel.appendChild(opt);
       }
@@ -1161,7 +1161,7 @@
       if (typeof goatcounter !== 'undefined') goatcounter.count({ path: 'upload-file', event: true });
       const { headers, rows } = parseCSV(text);
       if (!headers.length || !rows.length) {
-        alert('לא הצלחנו לקרוא את הקובץ. ודא שזהו קובץ CSV תקין.');
+        alert('Could not read the file. Make sure it is a valid CSV file.');
         return;
       }
 
@@ -1173,7 +1173,7 @@
       const methodCol = findColumn(headers, ['אמצעי', 'סוג תנועה', 'method', 'channel']);
 
       if (!amountCol) {
-        alert('לא נמצאה עמודת סכום בקובץ.\nעמודות שנמצאו: ' + headers.join(', '));
+        alert('Amount column not found in file.\nColumns found: ' + headers.join(', '));
         return;
       }
 
@@ -1244,11 +1244,11 @@
       if (fuelExpenses > 0) {
         document.getElementById('vatSummary').insertAdjacentHTML('beforeend',
           `<div class="vat-row" style="margin-top:0.4rem;border-top:1px solid #334155;padding-top:0.4rem">
-            <span>הוצאות דלק שזוהו:</span>
+            <span>Fuel expenses detected:</span>
             <span>${formatCurrency(fuelExpenses)}</span>
           </div>
           <div class="vat-row total">
-            <span>בלו על דלק (~50% ממחיר הדלק):</span>
+            <span>Fuel excise (~50% of fuel price):</span>
             <span>${formatCurrency(parsedFuelExcise)}</span>
           </div>`);
       }
@@ -1256,13 +1256,13 @@
       // Show notes
       const notes = [];
       if (skippedYear > 0) {
-        notes.push(`דילגנו על ${skippedYear} שורות שלא משנת ${targetYear}.`);
+        notes.push(`Skipped ${skippedYear} rows not from year ${targetYear}.`);
       }
       if (totalExpenses === 0 && skippedYear > 0) {
-        notes.push(`לא נמצאו הוצאות לשנת ${targetYear}. ודא שהקובץ מכיל נתונים לשנה זו.`);
+        notes.push(`No expenses found for year ${targetYear}. Make sure the file contains data for this year.`);
       }
       if (skippedPositive > 0) {
-        notes.push(`דילגנו על ${skippedPositive} שורות הכנסה (סכום חיובי).`);
+        notes.push(`Skipped ${skippedPositive} income rows (positive amounts).`);
       }
       if (notes.length > 0) {
         document.getElementById('vatSummary').insertAdjacentHTML('beforeend',
@@ -1294,7 +1294,7 @@
               const csv = XLSX.utils.sheet_to_csv(ws);
               processFile(csv);
             } catch (err) {
-              alert('שגיאה בקריאת קובץ אקסל: ' + err.message);
+              alert('Error reading Excel file: ' + err.message);
             }
           };
           reader.readAsArrayBuffer(file);
@@ -1306,7 +1306,7 @@
           const script = document.createElement('script');
           script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
           script.onload = loadAndParse;
-          script.onerror = () => alert('לא הצלחנו לטעון את ספריית קריאת אקסל. נסה קובץ CSV.');
+          script.onerror = () => alert('Could not load Excel reader. Try a CSV file.');
           document.head.appendChild(script);
         }
       } else {
@@ -1338,28 +1338,54 @@
 
       // Descriptions based on Knesset budget structure & obudget.org
       const CATEGORY_DESC = {
-        'חוב': 'החזר קרן וריבית על חוב ממשלתי — אגרות חוב ומלוות.',
-        'ביטחון והגנה': 'צה"ל, משרד הביטחון, תעשיות ביטחוניות, פנסיות צבאיות.',
-        'חינוך': 'מערכת החינוך, אוניברסיטאות, מכללות, השכלה גבוהה, תוכניות מעונות.',
-        'ביטוח לאומי': 'העברה מתקציב המדינה למוסד לביטוח לאומי — מימון קצבאות זקנה, ילדים, נכות ואבטלה. זה כסף מיסים, בנוסף לדמי ביטוח לאומי שכל אחד מפריש בנפרד.',
-        'בריאות': 'בתי חולים ממשלתיים, קופות חולים, בריאות הנפש, שירותי חירום.',
-        'תחבורה': 'כבישים, רכבת, תחבורה ציבורית, נמלים, רשות שדות התעופה.',
-        'תשתיות': 'כבישים, רכבת, תחבורה ציבורית, נמלים, רשות שדות התעופה.',
-        'רווחה': 'שירותי רווחה, סיוע לנזקקים, שיקום, מרכזי טיפול, דיור ציבורי.',
-        'ביטחון פנים': 'משטרת ישראל, שב"ס, כיבוי אש, רשות הכניסה לישראל.',
-        'פנסי': 'פנסיות תקציביות לעובדי מדינה, צבא וביטחון.',
-        'שיכון': 'משרד הבינוי והשיכון, סיוע בדיור, פינוי-בינוי, תכנון ובנייה.',
-        'כלכלה': 'משרד הכלכלה, רשות החדשנות, מענקי השקעות, סחר חוץ.',
-        'אוצר': 'משרד האוצר, רשות המיסים, החשב הכללי, רשות שוק ההון.',
-        'חוץ': 'משרד החוץ, שגרירות וקונסוליות, סיוע בינלאומי.',
-        'תרבות': 'תרבות, ספורט, שירותי דת, מועצות דתיות, מורשת.',
-        'עלייה': 'משרד העלייה והקליטה, סיוע לעולים חדשים, מרכזי קליטה.',
-        'חקלאות': 'חקלאות, הגנת הסביבה, גנים לאומיים, שמורות טבע.',
-        'מדע': 'מו"פ, סוכנות החלל, מחקר אקדמי, מכוני מחקר.',
-        'אנרגיה': 'משרד האנרגיה, רשות המים, אנרגיה מתחדשת, תשתיות גז.',
-        'משפט': 'מערכת בתי המשפט, פרקליטות, סנגוריה ציבורית, רישום מקרקעין.',
-        'משרדים אחרים': 'משרד ראש הממשלה, כנסת, נשיא, מבקר המדינה, רזרבות.',
+        'חוב': 'Repayment of principal and interest on government debt — bonds and loans.',
+        'ביטחון והגנה': 'IDF, Ministry of Defense, defense industries, military pensions.',
+        'חינוך': 'Education system, universities, colleges, higher education, daycare programs.',
+        'ביטוח לאומי': 'State transfer to National Insurance Institute — funding old-age, child, disability and unemployment benefits. This is tax money, in addition to the NII premiums everyone pays separately.',
+        'בריאות': 'Government hospitals, HMOs, mental health, emergency services.',
+        'תחבורה': 'Roads, railways, public transit, ports, airports authority.',
+        'תשתיות': 'Roads, railways, public transit, ports, airports authority.',
+        'רווחה': 'Social services, aid to the needy, rehabilitation, treatment centers, public housing.',
+        'ביטחון פנים': 'Israel Police, Prison Service, Fire & Rescue, Immigration Authority.',
+        'פנסי': 'Government pensions for state employees, military and security.',
+        'שיכון': 'Ministry of Housing, housing assistance, urban renewal, planning.',
+        'כלכלה': 'Ministry of Economy, Innovation Authority, investment grants, foreign trade.',
+        'אוצר': 'Ministry of Finance, Tax Authority, Accountant General, Capital Markets Authority.',
+        'חוץ': 'Ministry of Foreign Affairs, embassies and consulates, international aid.',
+        'תרבות': 'Culture, sports, religious services, religious councils, heritage.',
+        'עלייה': 'Ministry of Immigration, assistance to new immigrants, absorption centers.',
+        'חקלאות': 'Agriculture, environmental protection, national parks, nature reserves.',
+        'מדע': 'R&D, Space Agency, academic research, research institutes.',
+        'אנרגיה': 'Ministry of Energy, Water Authority, renewable energy, gas infrastructure.',
+        'משפט': 'Court system, prosecution, public defense, land registry.',
+        'משרדים אחרים': "Prime Minister's Office, Knesset, President, State Comptroller, reserves.",
       };
+
+      // English names for budget categories
+      const CATEGORY_NAME_EN = {
+        'החזר חובות וריבית': 'Debt Repayment & Interest',
+        'חינוך והשכלה גבוהה': 'Education & Higher Ed.',
+        'ביטחון והגנה': 'Defense & Security',
+        'ביטוח לאומי וקצבאות': 'National Insurance & Benefits',
+        'בריאות': 'Health',
+        'תשתיות ותחבורה': 'Infrastructure & Transport',
+        'רווחה ושירותים חברתיים': 'Welfare & Social Services',
+        'פנסיה תקציבית': 'Government Pensions',
+        'ביטחון פנים ומשטרה': 'Internal Security & Police',
+        'שיכון ובינוי': 'Housing & Construction',
+        'כלכלה ותעשייה': 'Economy & Industry',
+        'משרד האוצר': 'Ministry of Finance',
+        'תרבות, ספורט ודת': 'Culture, Sports & Religion',
+        'חוץ ודיפלומטיה': 'Foreign Affairs',
+        'חקלאות וסביבה': 'Agriculture & Environment',
+        'עלייה וקליטה': 'Immigration & Absorption',
+        'מדע וטכנולוגיה': 'Science & Technology',
+        'אנרגיה ומים': 'Energy & Water',
+        'משפט ובתי משפט': 'Justice & Courts',
+        'משרדים אחרים ורזרבות': 'Other Ministries & Reserves',
+        'Supplement תקציבית — ביטחון (חרבות ברזל)': 'Budget Supplement — Defense (Iron Swords)',
+      };
+      function enName(heName) { return CATEGORY_NAME_EN[heName] || heName; }
 
       function getTooltip(name) {
         const lower = name.toLowerCase();
@@ -1423,7 +1449,7 @@
 
     function calculate() {
       if (budgetItems.length === 0) {
-        alert('נתוני התקציב עדיין נטענים, נסה שוב בעוד רגע.');
+        alert('Budget data is still loading, please try again.');
         return;
       }
 
@@ -1464,7 +1490,7 @@
       const totalTax = incomeTax + capitalTax + vatPaid + fuelExcise + propertyTax + vehicleTax;
 
       if (totalTax === 0) {
-        alert('נא להזין לפחות שדה אחד');
+        alert('Please fill in at least one field');
         return;
       }
 
@@ -1475,12 +1501,12 @@
       const breakdownEl = document.getElementById('taxBreakdown');
       breakdownEl.innerHTML = '';
       [
-        { label: 'מס הכנסה', amount: incomeTax },
-        { label: 'מס רווחי הון', amount: capitalTax },
-        { label: 'מע״מ (משוער)', amount: vatPaid },
-        { label: 'בלו על דלק', amount: fuelExcise },
-        { label: 'מס רכישה (דירה)', amount: propertyTax },
-        { label: 'מס קנייה (רכב)', amount: vehicleTax },
+        { label: 'Income Tax', amount: incomeTax },
+        { label: 'Capital Gains Tax', amount: capitalTax },
+        { label: 'VAT (estimated)', amount: vatPaid },
+        { label: 'Fuel Excise', amount: fuelExcise },
+        { label: 'Property Tax', amount: propertyTax },
+        { label: 'Vehicle Tax', amount: vehicleTax },
       ].filter(p => p.amount > 0).forEach(p => {
         const div = document.createElement('div');
         div.className = 'tax-item';
@@ -1498,7 +1524,7 @@
           gridHint = document.createElement('p');
           gridHint.id = 'gridHint';
           gridHint.style.cssText = 'text-align:center;font-size:0.8rem;color:#64748b;margin-bottom:0.5rem';
-          gridHint.textContent = 'לחץ על סעיף לפירוט';
+          gridHint.textContent = 'Click a category for details';
           grid.before(gridHint);
         }
       }
@@ -1515,15 +1541,15 @@
           <div class="card-header">
             <div class="card-icon" style="background:${item.color}22">${item.icon}</div>
             <div>
-              <div class="card-name">${item.name}</div>
-              <div class="card-pct">${item.pct.toFixed(1)}% מתקציב ${budgetYear} (${item.amountB} מיליארד ₪)</div>
+              <div class="card-name">${enName(item.name)}</div>
+              <div class="card-pct">${item.pct.toFixed(1)}% of budget ${budgetYear} (${item.amountB} B ₪)</div>
             </div>
           </div>
           <div class="card-amount" style="color:${item.color}">${formatCurrency(amount)}</div>
           <div class="bar-bg">
             <div class="bar-fill" style="width:${barWidth}%;background:${item.color}"></div>
           </div>
-          <div class="monthly">${formatCurrency(monthly)} לחודש</div>
+          <div class="monthly">${formatCurrency(monthly)} /month</div>
         `;
         // Show description inline on hover/tap
         const tip = getTooltip(item.name);
@@ -1578,7 +1604,7 @@
       tbody.innerHTML = '';
       tfoot.innerHTML = '';
 
-      document.getElementById('modalTitle').textContent = 'מבנה תקציב המדינה';
+      document.getElementById('modalTitle').textContent = 'State Budget Structure';
 
       // Populate modal year selector
       const modalSel = document.getElementById('modalYearSelect');
@@ -1618,14 +1644,14 @@
       let totalB = 0;
       modalItems.forEach(item => {
         totalB += item.amountB;
-        const suppMark = item.supp ? ' <span style="color:#60a5fa;font-size:0.7rem">תוספת</span>' : '';
+        const suppMark = item.supp ? ' <span style="color:#60a5fa;font-size:0.7rem">Supplement</span>' : '';
         const tip = getTooltip(item.name);
         const tr = document.createElement('tr');
         if (item.supp) tr.className = 'supp-row';
         tr.innerHTML = `
           <td class="cat-icon">${item.icon}</td>
-          <td class="cat-name">${item.name}${suppMark}</td>
-          <td class="cat-amount">${item.amountB} מיליארד ₪</td>
+          <td class="cat-name">${enName(item.name)}${suppMark}</td>
+          <td class="cat-amount">${item.amountB} B ₪</td>
           <td class="cat-pct">${item.pct.toFixed(1)}%</td>
         `;
 
@@ -1657,15 +1683,15 @@
       });
 
       tfoot.innerHTML = `<tr style="font-weight:700;border-top:2px solid #334155">
-        <td></td><td>סה״כ</td>
-        <td class="cat-amount">${Math.round(totalB * 10) / 10} מיליארד ₪</td>
+        <td></td><td>Total</td>
+        <td class="cat-amount">${Math.round(totalB * 10) / 10} B ₪</td>
         <td class="cat-pct">100%</td>
       </tr>`;
 
       const isMobile = IS_TOUCH;
-      document.getElementById('modalSubtitle').innerHTML = 'חלוקת ההוצאה הממשלתית לפי סעיפים עיקריים'
+      document.getElementById('modalSubtitle').innerHTML = 'Government expenditure by main categories'
         + '<br><span style="font-size:0.75rem;color:#64748b">'
-        + (isMobile ? 'לחץ על סעיף לפירוט' : 'עבור עם העכבר מעל סעיף לפירוט')
+        + (isMobile ? 'Click a category for details' : 'Hover over a category for details')
         + '</span>';
 
       const srcLine = document.getElementById('modalSourceLine');
