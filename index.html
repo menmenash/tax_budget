@@ -850,6 +850,37 @@
       source: 'fallback',
     };
 
+    // 2026: Approved budget. ~711B net expenditure.
+    // Defense remains elevated. Debt repayment rising due to war borrowing.
+    // Source: Knesset, obudget.org
+    const FALLBACK_2026 = {
+      year: 2026,
+      totalB: 711,
+      items: [
+        { name: "החזר חובות וריבית",             amountB: 145 },
+        { name: "ביטחון והגנה",                   amountB: 108 },
+        { name: "חינוך והשכלה גבוהה",              amountB: 96 },
+        { name: "ביטוח לאומי וקצבאות",             amountB: 64 },
+        { name: "בריאות",                          amountB: 62 },
+        { name: "תשתיות ותחבורה",                 amountB: 48 },
+        { name: "רווחה ושירותים חברתיים",           amountB: 37 },
+        { name: "ביטחון פנים ומשטרה",              amountB: 27 },
+        { name: "פנסיה תקציבית",                  amountB: 25 },
+        { name: "שיכון ובינוי",                    amountB: 19 },
+        { name: "כלכלה ותעשייה",                   amountB: 13 },
+        { name: "משרד האוצר",                     amountB: 10 },
+        { name: "חוץ ודיפלומטיה",                  amountB: 8.5 },
+        { name: "תרבות, ספורט ודת",                amountB: 8.5 },
+        { name: "עלייה וקליטה",                   amountB: 7 },
+        { name: "חקלאות וסביבה",                  amountB: 7.5 },
+        { name: "מדע וטכנולוגיה",                 amountB: 6.5 },
+        { name: "אנרגיה ומים",                    amountB: 5.5 },
+        { name: "משפט ובתי משפט",                 amountB: 5 },
+        { name: "משרדים אחרים ורזרבות",            amountB: 8 },
+      ],
+      source: 'fallback',
+    };
+
     // Lookup map for year-specific fallback data
     const FALLBACK_BY_YEAR = {
       2021: FALLBACK_2021,
@@ -857,6 +888,7 @@
       2023: FALLBACK_2023,
       2024: FALLBACK_2024,
       2025: FALLBACK_2025,
+      2026: FALLBACK_2026,
     };
 
     // Active budget data (populated on load)
@@ -982,7 +1014,7 @@
       const currentYear = new Date().getFullYear();
       const defaultYear = currentYear - 1;
 
-      for (let y = defaultYear; y >= 2021; y--) {
+      for (let y = currentYear; y >= 2021; y--) {
         const opt = document.createElement('option');
         opt.value = y;
         opt.textContent = `שנת ${y}`;
@@ -1585,7 +1617,7 @@
       const modalSel = document.getElementById('modalYearSelect');
       if (modalSel.options.length === 0) {
         const currentYear = new Date().getFullYear();
-        for (let y = currentYear - 1; y >= 2021; y--) {
+        for (let y = currentYear; y >= 2021; y--) {
           const opt = document.createElement('option');
           opt.value = y;
           opt.textContent = y;
